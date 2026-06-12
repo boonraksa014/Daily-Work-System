@@ -119,6 +119,46 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/* ============================================================
+   WorkTrack semantic tokens — used by the app's inline styles.
+   Swap automatically when the .dark class is on <html>.
+   Keeps the purple/pink accent identity; only neutrals change.
+   ============================================================ */
+:root {
+  --wt-page: #f3f0ff;
+  --wt-card: #ffffff;
+  --wt-soft: #faf8ff;
+  --wt-soft2: #f5f3ff;
+  --wt-border: #ede9fe;
+  --wt-text: #2d1f6e;
+  --wt-muted: #7c6a9e;
+  --wt-stripe: #fdf8ff;
+  --wt-tint-blue: #f0f9ff;
+  --wt-tint-orange: #fff7ed;
+  --wt-tint-green: #f0fdf4;
+}
+
+.dark {
+  --wt-page: #14101e;
+  --wt-card: #1e1830;
+  --wt-soft: #251d3a;
+  --wt-soft2: #2a2240;
+  --wt-border: #352c4d;
+  --wt-text: #ece7fb;
+  --wt-muted: #a99cc6;
+  --wt-stripe: #221a35;
+  --wt-tint-blue: #16202e;
+  --wt-tint-orange: #2a1d12;
+  --wt-tint-green: #112318;
+}
+
+/* Tailwind bg-white cards follow the card token in dark mode.
+   The two-class selector outranks .bg-white, and does NOT match
+   bg-white/20 (a different class) used on gradient headers. */
+.dark .bg-white {
+  background-color: var(--wt-card);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

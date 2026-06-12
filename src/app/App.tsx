@@ -1,13 +1,14 @@
 import { useState } from "react";
 import {
   LayoutDashboard, Kanban, BookOpen, BarChart3,
-  CheckCircle2, Clock, TrendingUp, Sun,
+  CheckCircle2, Clock, TrendingUp, Sun, Moon,
   Menu, X, Zap, Target, Sparkles
 } from "lucide-react";
 import { KanbanBoard, Task } from "./components/KanbanBoard";
 import { DailyLog, LogEntry } from "./components/DailyLog";
 import { Reports } from "./components/Reports";
 import { useLocalStorage } from "./hooks/useLocalStorage";
+import { useTheme } from "./hooks/useTheme";
 import { INITIAL_TASKS, INITIAL_LOGS } from "./data/seed";
 
 type View = "dashboard" | "kanban" | "log" | "reports";
@@ -94,13 +95,13 @@ function DashboardView({ tasks, logEntries, onNavigate }: { tasks: Task[]; logEn
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Active tasks */}
-        <div className="bg-white rounded-2xl p-5" style={{ border: "2px solid #ede9fe", boxShadow: "0 4px 16px rgba(124,58,237,0.08)" }}>
+        <div className="bg-white rounded-2xl p-5" style={{ border: "2px solid var(--wt-border)", boxShadow: "0 4px 16px rgba(124,58,237,0.08)" }}>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <div className="p-2 rounded-xl" style={{ background: "linear-gradient(135deg, #0369a1, #38bdf8)" }}>
                 <Zap size={14} style={{ color: "white" }} />
               </div>
-              <p style={{ fontSize: "0.9rem", fontWeight: 800, color: "#2d1f6e" }}>งานที่กำลังดำเนินการ</p>
+              <p style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--wt-text)" }}>งานที่กำลังดำเนินการ</p>
             </div>
             <button onClick={() => onNavigate("kanban")}
               style={{ fontSize: "0.75rem", fontWeight: 700, color: "#7c3aed" }}
@@ -110,16 +111,16 @@ function DashboardView({ tasks, logEntries, onNavigate }: { tasks: Task[]; logEn
             {tasks.filter(t => t.status !== "done").length === 0 && (
               <div className="text-center py-8">
                 <span style={{ fontSize: "2rem" }}>🎉</span>
-                <p style={{ fontSize: "0.85rem", fontWeight: 700, color: "#2d1f6e", marginTop: 8 }}>เสร็จหมดแล้ว!</p>
+                <p style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--wt-text)", marginTop: 8 }}>เสร็จหมดแล้ว!</p>
               </div>
             )}
             {tasks.filter(t => t.status !== "done").slice(0, 5).map(task => (
               <div key={task.id} className="flex items-center gap-3 py-2.5 px-3 rounded-xl transition"
-                style={{ background: task.status === "inprogress" ? "#fff7ed" : "#f0f9ff" }}
+                style={{ background: task.status === "inprogress" ? "var(--wt-tint-orange)" : "var(--wt-tint-blue)" }}
                 onMouseEnter={e => (e.currentTarget.style.transform = "translateX(4px)")}
                 onMouseLeave={e => (e.currentTarget.style.transform = "translateX(0)")}>
                 <span style={{ fontSize: "0.85rem" }}>{task.status === "inprogress" ? "⚡" : "📋"}</span>
-                <p className="flex-1 truncate" style={{ fontSize: "0.85rem", fontWeight: 700, color: "#2d1f6e" }}>{task.title}</p>
+                <p className="flex-1 truncate" style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--wt-text)" }}>{task.title}</p>
                 <span className="px-2 py-0.5 rounded-full shrink-0" style={{
                   background: task.priority === "high" ? "#ffe4e6" : task.priority === "medium" ? "#fef3c7" : "#d1fae5",
                   color: task.priority === "high" ? "#9f1239" : task.priority === "medium" ? "#92400e" : "#065f46",
@@ -133,13 +134,13 @@ function DashboardView({ tasks, logEntries, onNavigate }: { tasks: Task[]; logEn
         </div>
 
         {/* Today log preview */}
-        <div className="bg-white rounded-2xl p-5" style={{ border: "2px solid #ede9fe", boxShadow: "0 4px 16px rgba(124,58,237,0.08)" }}>
+        <div className="bg-white rounded-2xl p-5" style={{ border: "2px solid var(--wt-border)", boxShadow: "0 4px 16px rgba(124,58,237,0.08)" }}>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <div className="p-2 rounded-xl" style={{ background: "linear-gradient(135deg, #059669, #34d399)" }}>
                 <BookOpen size={14} style={{ color: "white" }} />
               </div>
-              <p style={{ fontSize: "0.9rem", fontWeight: 800, color: "#2d1f6e" }}>บันทึกงานวันนี้</p>
+              <p style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--wt-text)" }}>บันทึกงานวันนี้</p>
             </div>
             <button onClick={() => onNavigate("log")} style={{ fontSize: "0.75rem", fontWeight: 700, color: "#7c3aed" }} className="hover:underline">ดูทั้งหมด →</button>
           </div>
@@ -147,7 +148,7 @@ function DashboardView({ tasks, logEntries, onNavigate }: { tasks: Task[]; logEn
             {todayLogs.length === 0 && (
               <div className="text-center py-8">
                 <span style={{ fontSize: "2rem" }}>✍️</span>
-                <p style={{ fontSize: "0.85rem", fontWeight: 700, color: "#2d1f6e", marginTop: 8 }}>ยังไม่มีบันทึกวันนี้</p>
+                <p style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--wt-text)", marginTop: 8 }}>ยังไม่มีบันทึกวันนี้</p>
                 <button onClick={() => onNavigate("log")} className="mt-2 px-4 py-2 rounded-xl"
                   style={{ background: "linear-gradient(135deg, #7c3aed, #a855f7)", color: "white", fontSize: "0.78rem", fontWeight: 800, border: "none" }}>
                   เริ่มบันทึก
@@ -156,21 +157,21 @@ function DashboardView({ tasks, logEntries, onNavigate }: { tasks: Task[]; logEn
             )}
             {todayLogs.slice(0, 5).map(log => (
               <div key={log.id} className="flex items-center gap-3 py-2.5 px-3 rounded-xl"
-                style={{ background: log.done ? "#f0fdf4" : "#faf8ff" }}>
+                style={{ background: log.done ? "var(--wt-tint-green)" : "var(--wt-soft)" }}>
                 <span style={{ fontSize: "0.9rem" }}>{log.done ? "✅" : "⏳"}</span>
                 <p className={`flex-1 truncate ${log.done ? "line-through" : ""}`}
-                  style={{ fontSize: "0.83rem", fontWeight: 700, color: log.done ? "#7c6a9e" : "#2d1f6e" }}>
+                  style={{ fontSize: "0.83rem", fontWeight: 700, color: log.done ? "var(--wt-muted)" : "var(--wt-text)" }}>
                   {log.title}
                 </p>
-                <span className="px-2 py-0.5 rounded-full shrink-0" style={{ background: "#ede9fe", color: "#7c3aed", fontSize: "0.68rem", fontWeight: 800 }}>
+                <span className="px-2 py-0.5 rounded-full shrink-0" style={{ background: "var(--wt-border)", color: "#7c3aed", fontSize: "0.68rem", fontWeight: 800 }}>
                   {log.hours} ชม.
                 </span>
               </div>
             ))}
           </div>
           {todayHours > 0 && (
-            <div className="mt-3 pt-3 flex items-center justify-between" style={{ borderTop: "2px solid #f5f3ff" }}>
-              <span style={{ fontSize: "0.78rem", color: "#7c6a9e", fontWeight: 600 }}>รวมวันนี้</span>
+            <div className="mt-3 pt-3 flex items-center justify-between" style={{ borderTop: "2px solid var(--wt-soft2)" }}>
+              <span style={{ fontSize: "0.78rem", color: "var(--wt-muted)", fontWeight: 600 }}>รวมวันนี้</span>
               <span style={{ fontSize: "0.9rem", fontWeight: 900, color: "#7c3aed" }}>{todayHours} ชั่วโมง ⏱️</span>
             </div>
           )}
@@ -178,13 +179,13 @@ function DashboardView({ tasks, logEntries, onNavigate }: { tasks: Task[]; logEn
       </div>
 
       {/* Kanban mini summary */}
-      <div className="bg-white rounded-2xl p-5" style={{ border: "2px solid #ede9fe", boxShadow: "0 4px 16px rgba(124,58,237,0.08)" }}>
+      <div className="bg-white rounded-2xl p-5" style={{ border: "2px solid var(--wt-border)", boxShadow: "0 4px 16px rgba(124,58,237,0.08)" }}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-xl" style={{ background: "linear-gradient(135deg, #db2777, #f472b6)" }}>
               <Target size={14} style={{ color: "white" }} />
             </div>
-            <p style={{ fontSize: "0.9rem", fontWeight: 800, color: "#2d1f6e" }}>ความคืบหน้างานทั้งหมด</p>
+            <p style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--wt-text)" }}>ความคืบหน้างานทั้งหมด</p>
           </div>
           <button onClick={() => onNavigate("kanban")} style={{ fontSize: "0.75rem", fontWeight: 700, color: "#7c3aed" }} className="hover:underline">ไป Kanban →</button>
         </div>
@@ -211,11 +212,12 @@ export default function App() {
   const [tasks, setTasks] = useLocalStorage<Task[]>("worktrack.tasks", INITIAL_TASKS);
   const [logEntries, setLogEntries] = useLocalStorage<LogEntry[]>("worktrack.logs", INITIAL_LOGS);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { theme, toggle } = useTheme();
 
   const currentNav = NAV_ITEMS.find(n => n.id === view)!;
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "#f3f0ff", fontFamily: "Nunito, 'Nunito Sans', system-ui, sans-serif" }}>
+    <div className="flex h-screen overflow-hidden" style={{ background: "var(--wt-page)", fontFamily: "Nunito, 'Nunito Sans', system-ui, sans-serif" }}>
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-20 lg:hidden" style={{ background: "rgba(45,31,110,0.4)", backdropFilter: "blur(4px)" }}
@@ -225,7 +227,7 @@ export default function App() {
       {/* Sidebar */}
       <aside
         className={`fixed lg:relative z-30 h-full flex flex-col transition-transform duration-300 shrink-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
-        style={{ width: 220, background: "white", borderRight: "2px solid #ede9fe", boxShadow: "4px 0 24px rgba(124,58,237,0.08)" }}
+        style={{ width: 220, background: "var(--wt-card)", borderRight: "2px solid var(--wt-border)", boxShadow: "4px 0 24px rgba(124,58,237,0.08)" }}
       >
         {/* Logo */}
         <div className="px-5 pt-6 pb-5">
@@ -235,11 +237,11 @@ export default function App() {
                 <Sparkles size={17} style={{ color: "white" }} />
               </div>
               <div>
-                <p style={{ fontSize: "0.95rem", fontWeight: 900, color: "#2d1f6e" }}>WorkTrack</p>
-                <p style={{ fontSize: "0.6rem", color: "#7c6a9e", fontWeight: 600 }}>Daily Work Log</p>
+                <p style={{ fontSize: "0.95rem", fontWeight: 900, color: "var(--wt-text)" }}>WorkTrack</p>
+                <p style={{ fontSize: "0.6rem", color: "var(--wt-muted)", fontWeight: 600 }}>Daily Work Log</p>
               </div>
             </div>
-            <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1.5 rounded-xl" style={{ color: "#7c6a9e" }}>
+            <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1.5 rounded-xl" style={{ color: "var(--wt-muted)" }}>
               <X size={15} />
             </button>
           </div>
@@ -256,10 +258,10 @@ export default function App() {
                   background: active ? item.gradient : "transparent",
                   boxShadow: active ? "0 4px 12px rgba(124,58,237,0.25)" : "none",
                 }}
-                onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = "#f5f3ff"; }}
+                onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = "var(--wt-soft2)"; }}
                 onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = "transparent"; }}>
                 <span className="text-xl shrink-0">{item.emoji}</span>
-                <span style={{ fontSize: "0.85rem", fontWeight: active ? 800 : 600, color: active ? "white" : "#2d1f6e" }}>
+                <span style={{ fontSize: "0.85rem", fontWeight: active ? 800 : 600, color: active ? "white" : "var(--wt-text)" }}>
                   {item.label}
                 </span>
               </button>
@@ -269,17 +271,17 @@ export default function App() {
 
         {/* Bottom widget */}
         <div className="px-4 pb-5 pt-3">
-          <div className="rounded-2xl p-4 overflow-hidden relative" style={{ background: "linear-gradient(135deg, #ede9fe, #fce7f3)" }}>
+          <div className="rounded-2xl p-4 overflow-hidden relative" style={{ background: "linear-gradient(135deg, var(--wt-border), #fce7f3)" }}>
             <div className="absolute" style={{ width: 80, height: 80, borderRadius: "50%", background: "rgba(124,58,237,0.08)", top: -20, right: -20 }} />
-            <p style={{ fontSize: "0.68rem", fontWeight: 700, color: "#7c6a9e", textTransform: "uppercase", letterSpacing: "0.05em" }}>งานทั้งหมด</p>
-            <p style={{ fontSize: "2rem", fontWeight: 900, color: "#2d1f6e", lineHeight: 1 }}>{tasks.length}</p>
+            <p style={{ fontSize: "0.68rem", fontWeight: 700, color: "var(--wt-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>งานทั้งหมด</p>
+            <p style={{ fontSize: "2rem", fontWeight: 900, color: "var(--wt-text)", lineHeight: 1 }}>{tasks.length}</p>
             <div className="flex items-center gap-2 mt-2">
               <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "rgba(124,58,237,0.15)" }}>
                 <div className="h-full rounded-full transition-all"
                   style={{ width: tasks.length > 0 ? `${(tasks.filter(t => t.status === "done").length / tasks.length) * 100}%` : "0%", background: "linear-gradient(90deg, #7c3aed, #34d399)" }} />
               </div>
             </div>
-            <p style={{ fontSize: "0.68rem", color: "#7c6a9e", fontWeight: 600, marginTop: 4 }}>
+            <p style={{ fontSize: "0.68rem", color: "var(--wt-muted)", fontWeight: 600, marginTop: 4 }}>
               ✅ เสร็จแล้ว {tasks.filter(t => t.status === "done").length} งาน
             </p>
           </div>
@@ -290,10 +292,10 @@ export default function App() {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header */}
         <header className="bg-white flex items-center gap-3 px-5 py-3.5 shrink-0"
-          style={{ borderBottom: "2px solid #ede9fe", boxShadow: "0 4px 16px rgba(124,58,237,0.06)" }}>
+          style={{ borderBottom: "2px solid var(--wt-border)", boxShadow: "0 4px 16px rgba(124,58,237,0.06)" }}>
           <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 rounded-xl transition"
-            style={{ color: "#7c6a9e" }}
-            onMouseEnter={e => (e.currentTarget.style.background = "#f5f3ff")}
+            style={{ color: "var(--wt-muted)" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "var(--wt-soft2)")}
             onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
             <Menu size={18} />
           </button>
@@ -303,12 +305,20 @@ export default function App() {
               <div style={{ color: "white" }}>{currentNav.icon}</div>
             </div>
             <div>
-              <h2 style={{ fontSize: "0.95rem", fontWeight: 900, color: "#2d1f6e" }}>{currentNav.label}</h2>
+              <h2 style={{ fontSize: "0.95rem", fontWeight: 900, color: "var(--wt-text)" }}>{currentNav.label}</h2>
             </div>
           </div>
 
           <div className="ml-auto flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: "#f5f3ff" }}>
+            <button onClick={toggle}
+              aria-label={theme === "dark" ? "สลับเป็นโหมดสว่าง" : "สลับเป็นโหมดมืด"}
+              className="p-2 rounded-xl transition"
+              style={{ background: "var(--wt-soft2)", color: theme === "dark" ? "#fbbf24" : "#7c3aed" }}
+              onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.08)")}
+              onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}>
+              {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
+            </button>
+            <div className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: "var(--wt-soft2)" }}>
               <span style={{ fontSize: "0.82rem" }}>📅</span>
               <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#7c3aed" }}>
                 {new Date().toLocaleDateString("th-TH", { day: "numeric", month: "short" })}
@@ -321,7 +331,7 @@ export default function App() {
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-5" style={{ scrollbarWidth: "thin", scrollbarColor: "#ede9fe transparent" }}>
+        <main className="flex-1 overflow-y-auto p-4 lg:p-5" style={{ scrollbarWidth: "thin", scrollbarColor: "var(--wt-border) transparent" }}>
           {view === "dashboard" && <DashboardView tasks={tasks} logEntries={logEntries} onNavigate={setView} />}
           {view === "kanban" && (
             <div style={{ height: "calc(100vh - 114px)" }}>

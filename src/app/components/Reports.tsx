@@ -38,8 +38,8 @@ interface CustomTooltipProps {
 function CustomTooltip({ active, payload, label, unitSuffix = "" }: CustomTooltipProps) {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: "white", border: "2px solid #ede9fe", borderRadius: 14, padding: "10px 14px", boxShadow: "0 8px 24px rgba(124,58,237,0.15)" }}>
-      <p style={{ fontSize: "0.78rem", fontWeight: 700, color: "#7c6a9e", marginBottom: 4 }}>{label}</p>
+    <div style={{ background: "var(--wt-card)", border: "2px solid var(--wt-border)", borderRadius: 14, padding: "10px 14px", boxShadow: "0 8px 24px rgba(124,58,237,0.15)" }}>
+      <p style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--wt-muted)", marginBottom: 4 }}>{label}</p>
       {payload.map(p => (
         <p key={p.name} style={{ fontSize: "0.88rem", fontWeight: 800, color: p.color }}>
           {p.value} {unitSuffix}
@@ -95,18 +95,18 @@ export function Reports({ logEntries, tasks }: ReportsProps) {
       {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* Area chart: hours per day */}
-        <div className="lg:col-span-3 bg-white rounded-2xl p-5" style={{ border: "2px solid #ede9fe", boxShadow: "0 4px 16px rgba(124,58,237,0.08)" }}>
+        <div className="lg:col-span-3 bg-white rounded-2xl p-5" style={{ border: "2px solid var(--wt-border)", boxShadow: "0 4px 16px rgba(124,58,237,0.08)" }}>
           <div className="flex items-center gap-2 mb-4">
             <div className="p-2 rounded-xl" style={{ background: "linear-gradient(135deg, #7c3aed, #a855f7)" }}>
               <TrendingUp size={14} style={{ color: "white" }} />
             </div>
             <div>
-              <p style={{ fontSize: "0.9rem", fontWeight: 800, color: "#2d1f6e" }}>ชั่วโมงงาน 7 วันล่าสุด</p>
-              <p style={{ fontSize: "0.72rem", color: "#7c6a9e" }}>บันทึกการทำงานรายวัน</p>
+              <p style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--wt-text)" }}>ชั่วโมงงาน 7 วันล่าสุด</p>
+              <p style={{ fontSize: "0.72rem", color: "var(--wt-muted)" }}>บันทึกการทำงานรายวัน</p>
             </div>
           </div>
           {last7.every(d => d.hours === 0) ? (
-            <div className="flex flex-col items-center justify-center h-44" style={{ color: "#7c6a9e" }}>
+            <div className="flex flex-col items-center justify-center h-44" style={{ color: "var(--wt-muted)" }}>
               <span style={{ fontSize: "2rem" }}>📊</span>
               <p style={{ fontSize: "0.85rem", fontWeight: 700, marginTop: 8 }}>ยังไม่มีข้อมูล</p>
             </div>
@@ -119,9 +119,9 @@ export function Reports({ logEntries, tasks }: ReportsProps) {
                     <stop offset="95%" stopColor="#7c3aed" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f5f3ff" />
-                <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#7c6a9e", fontFamily: "Nunito" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "#7c6a9e", fontFamily: "Nunito" }} axisLine={false} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(124,58,237,0.12)" />
+                <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#9b8fb5", fontFamily: "Nunito" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: "#9b8fb5", fontFamily: "Nunito" }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip unitSuffix="ชม." />} />
                 <Area type="monotone" dataKey="hours" name="ชั่วโมง" stroke="#7c3aed" strokeWidth={3} fill="url(#hoursGrad)"
                   dot={{ fill: "#7c3aed", r: 5, strokeWidth: 0 }} activeDot={{ r: 7, fill: "#a855f7" }} />
@@ -131,18 +131,18 @@ export function Reports({ logEntries, tasks }: ReportsProps) {
         </div>
 
         {/* Pie chart: category */}
-        <div className="lg:col-span-2 bg-white rounded-2xl p-5" style={{ border: "2px solid #ede9fe", boxShadow: "0 4px 16px rgba(124,58,237,0.08)" }}>
+        <div className="lg:col-span-2 bg-white rounded-2xl p-5" style={{ border: "2px solid var(--wt-border)", boxShadow: "0 4px 16px rgba(124,58,237,0.08)" }}>
           <div className="flex items-center gap-2 mb-4">
             <div className="p-2 rounded-xl" style={{ background: "linear-gradient(135deg, #db2777, #f472b6)" }}>
               <Target size={14} style={{ color: "white" }} />
             </div>
             <div>
-              <p style={{ fontSize: "0.9rem", fontWeight: 800, color: "#2d1f6e" }}>สัดส่วนหมวดหมู่</p>
-              <p style={{ fontSize: "0.72rem", color: "#7c6a9e" }}>ชั่วโมงต่อหมวดหมู่</p>
+              <p style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--wt-text)" }}>สัดส่วนหมวดหมู่</p>
+              <p style={{ fontSize: "0.72rem", color: "var(--wt-muted)" }}>ชั่วโมงต่อหมวดหมู่</p>
             </div>
           </div>
           {categoryData.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-44" style={{ color: "#7c6a9e" }}>
+            <div className="flex flex-col items-center justify-center h-44" style={{ color: "var(--wt-muted)" }}>
               <span style={{ fontSize: "2rem" }}>🍩</span>
               <p style={{ fontSize: "0.85rem", fontWeight: 700, marginTop: 8 }}>ยังไม่มีข้อมูล</p>
             </div>
@@ -165,18 +165,18 @@ export function Reports({ logEntries, tasks }: ReportsProps) {
       {/* Task status + Bar chart row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Task status */}
-        <div className="bg-white rounded-2xl p-5" style={{ border: "2px solid #ede9fe", boxShadow: "0 4px 16px rgba(124,58,237,0.08)" }}>
+        <div className="bg-white rounded-2xl p-5" style={{ border: "2px solid var(--wt-border)", boxShadow: "0 4px 16px rgba(124,58,237,0.08)" }}>
           <div className="flex items-center gap-2 mb-5">
             <div className="p-2 rounded-xl" style={{ background: "linear-gradient(135deg, #059669, #34d399)" }}>
               <CheckCircle2 size={14} style={{ color: "white" }} />
             </div>
             <div>
-              <p style={{ fontSize: "0.9rem", fontWeight: 800, color: "#2d1f6e" }}>สถานะงาน Kanban</p>
-              <p style={{ fontSize: "0.72rem", color: "#7c6a9e" }}>ภาพรวมงานทั้งหมด {tasks.length} รายการ</p>
+              <p style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--wt-text)" }}>สถานะงาน Kanban</p>
+              <p style={{ fontSize: "0.72rem", color: "var(--wt-muted)" }}>ภาพรวมงานทั้งหมด {tasks.length} รายการ</p>
             </div>
           </div>
           {tasks.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10" style={{ color: "#7c6a9e" }}>
+            <div className="flex flex-col items-center justify-center py-10" style={{ color: "var(--wt-muted)" }}>
               <span style={{ fontSize: "2rem" }}>📋</span>
               <p style={{ fontSize: "0.85rem", fontWeight: 700, marginTop: 8 }}>ยังไม่มีงาน</p>
             </div>
@@ -189,12 +189,12 @@ export function Reports({ logEntries, tasks }: ReportsProps) {
               ].map(s => (
                 <div key={s.label}>
                   <div className="flex items-center justify-between mb-1.5">
-                    <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#2d1f6e" }}>{s.emoji} {s.label}</span>
-                    <span className="px-2.5 py-0.5 rounded-full" style={{ background: s.bg, fontSize: "0.75rem", fontWeight: 800, color: "#2d1f6e" }}>
+                    <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--wt-text)" }}>{s.emoji} {s.label}</span>
+                    <span className="px-2.5 py-0.5 rounded-full" style={{ background: s.bg, fontSize: "0.75rem", fontWeight: 800, color: "var(--wt-text)" }}>
                       {s.count} งาน
                     </span>
                   </div>
-                  <div className="h-3 rounded-full overflow-hidden" style={{ background: "#f5f3ff" }}>
+                  <div className="h-3 rounded-full overflow-hidden" style={{ background: "var(--wt-soft2)" }}>
                     <div className="h-full rounded-full transition-all duration-700"
                       style={{ width: tasks.length > 0 ? `${(s.count / tasks.length) * 100}%` : "0%", background: s.gradient }} />
                   </div>
@@ -205,27 +205,27 @@ export function Reports({ logEntries, tasks }: ReportsProps) {
         </div>
 
         {/* Daily done bar chart */}
-        <div className="bg-white rounded-2xl p-5" style={{ border: "2px solid #ede9fe", boxShadow: "0 4px 16px rgba(124,58,237,0.08)" }}>
+        <div className="bg-white rounded-2xl p-5" style={{ border: "2px solid var(--wt-border)", boxShadow: "0 4px 16px rgba(124,58,237,0.08)" }}>
           <div className="flex items-center gap-2 mb-4">
             <div className="p-2 rounded-xl" style={{ background: "linear-gradient(135deg, #d97706, #fbbf24)" }}>
               <BarChart2 size={14} style={{ color: "white" }} />
             </div>
             <div>
-              <p style={{ fontSize: "0.9rem", fontWeight: 800, color: "#2d1f6e" }}>งานสำเร็จรายวัน</p>
-              <p style={{ fontSize: "0.72rem", color: "#7c6a9e" }}>จำนวนงานที่เสร็จ 7 วัน</p>
+              <p style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--wt-text)" }}>งานสำเร็จรายวัน</p>
+              <p style={{ fontSize: "0.72rem", color: "var(--wt-muted)" }}>จำนวนงานที่เสร็จ 7 วัน</p>
             </div>
           </div>
           {last7.every(d => d.done === 0) ? (
-            <div className="flex flex-col items-center justify-center h-44" style={{ color: "#7c6a9e" }}>
+            <div className="flex flex-col items-center justify-center h-44" style={{ color: "var(--wt-muted)" }}>
               <span style={{ fontSize: "2rem" }}>📊</span>
               <p style={{ fontSize: "0.85rem", fontWeight: 700, marginTop: 8 }}>ยังไม่มีข้อมูล</p>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={last7} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f5f3ff" />
-                <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#7c6a9e", fontFamily: "Nunito" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "#7c6a9e", fontFamily: "Nunito" }} axisLine={false} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(124,58,237,0.12)" />
+                <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#9b8fb5", fontFamily: "Nunito" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: "#9b8fb5", fontFamily: "Nunito" }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip unitSuffix="งาน" />} />
                 <Bar dataKey="done" name="เสร็จ" radius={[8, 8, 0, 0]} fill="url(#doneGrad)" />
                 <defs>
@@ -241,18 +241,18 @@ export function Reports({ logEntries, tasks }: ReportsProps) {
       </div>
 
       {/* Recent log table */}
-      <div className="bg-white rounded-2xl p-5" style={{ border: "2px solid #ede9fe", boxShadow: "0 4px 16px rgba(124,58,237,0.08)" }}>
+      <div className="bg-white rounded-2xl p-5" style={{ border: "2px solid var(--wt-border)", boxShadow: "0 4px 16px rgba(124,58,237,0.08)" }}>
         <div className="flex items-center gap-2 mb-4">
           <div className="p-2 rounded-xl" style={{ background: "linear-gradient(135deg, #7c3aed, #ec4899)" }}>
             <Zap size={14} style={{ color: "white" }} />
           </div>
           <div>
-            <p style={{ fontSize: "0.9rem", fontWeight: 800, color: "#2d1f6e" }}>รายการงานล่าสุด</p>
-            <p style={{ fontSize: "0.72rem", color: "#7c6a9e" }}>10 รายการล่าสุด</p>
+            <p style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--wt-text)" }}>รายการงานล่าสุด</p>
+            <p style={{ fontSize: "0.72rem", color: "var(--wt-muted)" }}>10 รายการล่าสุด</p>
           </div>
         </div>
         {logEntries.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8" style={{ color: "#7c6a9e" }}>
+          <div className="flex flex-col items-center justify-center py-8" style={{ color: "var(--wt-muted)" }}>
             <span style={{ fontSize: "2rem" }}>📝</span>
             <p style={{ fontSize: "0.85rem", fontWeight: 700, marginTop: 8 }}>ยังไม่มีรายการ</p>
           </div>
@@ -262,7 +262,7 @@ export function Reports({ logEntries, tasks }: ReportsProps) {
               <thead>
                 <tr>
                   {["วันที่", "ชื่องาน", "หมวดหมู่", "ชม.", "สถานะ"].map(h => (
-                    <th key={h} className="text-left pb-3 pr-3" style={{ fontSize: "0.72rem", fontWeight: 800, color: "#7c6a9e", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "2px solid #ede9fe" }}>
+                    <th key={h} className="text-left pb-3 pr-3" style={{ fontSize: "0.72rem", fontWeight: 800, color: "var(--wt-muted)", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "2px solid var(--wt-border)" }}>
                       {h}
                     </th>
                   ))}
@@ -270,14 +270,14 @@ export function Reports({ logEntries, tasks }: ReportsProps) {
               </thead>
               <tbody>
                 {[...logEntries].reverse().slice(0, 10).map((e, i) => (
-                  <tr key={e.id} style={{ background: i % 2 === 0 ? "transparent" : "#fdf8ff" }}>
-                    <td className="py-3 pr-3" style={{ fontSize: "0.78rem", color: "#7c6a9e", whiteSpace: "nowrap", borderBottom: "1px solid #f5f3ff" }}>{e.date}</td>
-                    <td className="py-3 pr-3" style={{ fontSize: "0.82rem", fontWeight: 700, color: "#2d1f6e", borderBottom: "1px solid #f5f3ff" }}>{e.title}</td>
-                    <td className="py-3 pr-3" style={{ borderBottom: "1px solid #f5f3ff" }}>
-                      <span className="px-2.5 py-1 rounded-full" style={{ background: "#ede9fe", color: "#5b21b6", fontSize: "0.7rem", fontWeight: 700 }}>{e.category}</span>
+                  <tr key={e.id} style={{ background: i % 2 === 0 ? "transparent" : "var(--wt-stripe)" }}>
+                    <td className="py-3 pr-3" style={{ fontSize: "0.78rem", color: "var(--wt-muted)", whiteSpace: "nowrap", borderBottom: "1px solid var(--wt-soft2)" }}>{e.date}</td>
+                    <td className="py-3 pr-3" style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--wt-text)", borderBottom: "1px solid var(--wt-soft2)" }}>{e.title}</td>
+                    <td className="py-3 pr-3" style={{ borderBottom: "1px solid var(--wt-soft2)" }}>
+                      <span className="px-2.5 py-1 rounded-full" style={{ background: "var(--wt-border)", color: "#5b21b6", fontSize: "0.7rem", fontWeight: 700 }}>{e.category}</span>
                     </td>
-                    <td className="py-3 pr-3" style={{ fontSize: "0.82rem", fontWeight: 800, color: "#7c3aed", textAlign: "right", borderBottom: "1px solid #f5f3ff" }}>{e.hours}</td>
-                    <td className="py-3" style={{ textAlign: "center", borderBottom: "1px solid #f5f3ff" }}>
+                    <td className="py-3 pr-3" style={{ fontSize: "0.82rem", fontWeight: 800, color: "#7c3aed", textAlign: "right", borderBottom: "1px solid var(--wt-soft2)" }}>{e.hours}</td>
+                    <td className="py-3" style={{ textAlign: "center", borderBottom: "1px solid var(--wt-soft2)" }}>
                       {e.done
                         ? <span className="px-2.5 py-1 rounded-full" style={{ background: "#d1fae5", color: "#065f46", fontSize: "0.7rem", fontWeight: 700 }}>✅ เสร็จ</span>
                         : <span className="px-2.5 py-1 rounded-full" style={{ background: "#fef3c7", color: "#92400e", fontSize: "0.7rem", fontWeight: 700 }}>⏳ รอ</span>}

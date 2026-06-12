@@ -15,7 +15,7 @@ export interface LogEntry {
 const CATEGORIES = ["พัฒนาระบบ", "ประชุม", "วางแผน", "ทดสอบ", "เอกสาร", "สนับสนุน", "อื่นๆ"];
 
 const CAT_CONFIG: Record<string, { bg: string; text: string; emoji: string }> = {
-  "พัฒนาระบบ": { bg: "#ede9fe", text: "#5b21b6", emoji: "💻" },
+  "พัฒนาระบบ": { bg: "var(--wt-border)", text: "#5b21b6", emoji: "💻" },
   "ประชุม":    { bg: "#e0f2fe", text: "#075985", emoji: "🤝" },
   "วางแผน":   { bg: "#fce7f3", text: "#9d174d", emoji: "📐" },
   "ทดสอบ":    { bg: "#fef3c7", text: "#92400e", emoji: "🧪" },
@@ -67,9 +67,9 @@ function InlineAddForm({ onAdd, onCancel, date }: InlineAddFormProps) {
       <form onSubmit={handleSubmit} className="bg-white p-4 space-y-3">
         <input
           className="w-full px-4 py-3 rounded-xl outline-none transition"
-          style={{ border: "2px solid #ede9fe", background: "#faf8ff", fontSize: "0.92rem", color: "#2d1f6e", fontFamily: "inherit", fontWeight: 600 }}
+          style={{ border: "2px solid var(--wt-border)", background: "var(--wt-soft)", fontSize: "0.92rem", color: "var(--wt-text)", fontFamily: "inherit", fontWeight: 600 }}
           onFocus={e => (e.target.style.borderColor = "#a78bfa")}
-          onBlur={e => (e.target.style.borderColor = "#ede9fe")}
+          onBlur={e => (e.target.style.borderColor = "var(--wt-border)")}
           placeholder="ทำอะไรวันนี้..."
           value={title}
           onChange={e => setTitle(e.target.value)}
@@ -77,9 +77,9 @@ function InlineAddForm({ onAdd, onCancel, date }: InlineAddFormProps) {
         />
         <textarea
           className="w-full px-4 py-3 rounded-xl outline-none transition resize-none"
-          style={{ border: "2px solid #ede9fe", background: "#faf8ff", fontSize: "0.85rem", color: "#2d1f6e", fontFamily: "inherit" }}
+          style={{ border: "2px solid var(--wt-border)", background: "var(--wt-soft)", fontSize: "0.85rem", color: "var(--wt-text)", fontFamily: "inherit" }}
           onFocus={e => (e.target.style.borderColor = "#a78bfa")}
-          onBlur={e => (e.target.style.borderColor = "#ede9fe")}
+          onBlur={e => (e.target.style.borderColor = "var(--wt-border)")}
           placeholder="บันทึกเพิ่มเติม (ไม่จำเป็น)..."
           value={note}
           onChange={e => setNote(e.target.value)}
@@ -88,7 +88,7 @@ function InlineAddForm({ onAdd, onCancel, date }: InlineAddFormProps) {
 
         {/* Category grid */}
         <div>
-          <p style={{ fontSize: "0.75rem", fontWeight: 700, color: "#7c6a9e", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>หมวดหมู่</p>
+          <p style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--wt-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>หมวดหมู่</p>
           <div className="flex flex-wrap gap-2">
             {CATEGORIES.map(c => {
               const cfg = CAT_CONFIG[c];
@@ -97,8 +97,8 @@ function InlineAddForm({ onAdd, onCancel, date }: InlineAddFormProps) {
                 <button key={c} type="button" onClick={() => setCategory(c)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition"
                   style={{
-                    background: active ? cfg.bg : "#f5f3ff",
-                    color: active ? cfg.text : "#7c6a9e",
+                    background: active ? cfg.bg : "var(--wt-soft2)",
+                    color: active ? cfg.text : "var(--wt-muted)",
                     border: `2px solid ${active ? cfg.text + "40" : "transparent"}`,
                     fontSize: "0.78rem", fontWeight: 700,
                   }}>
@@ -113,24 +113,24 @@ function InlineAddForm({ onAdd, onCancel, date }: InlineAddFormProps) {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <Clock size={15} style={{ color: "#7c3aed" }} />
-            <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#7c6a9e" }}>ชั่วโมงที่ใช้</span>
+            <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--wt-muted)" }}>ชั่วโมงที่ใช้</span>
           </div>
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => setHours(h => Math.max(0.5, h - 0.5))}
               className="w-8 h-8 rounded-xl flex items-center justify-center transition"
-              style={{ background: "#ede9fe", color: "#7c3aed", fontWeight: 800, fontSize: "1rem" }}>−</button>
-            <span style={{ fontSize: "1rem", fontWeight: 800, color: "#2d1f6e", minWidth: 40, textAlign: "center" }}>{hours}</span>
+              style={{ background: "var(--wt-border)", color: "#7c3aed", fontWeight: 800, fontSize: "1rem" }}>−</button>
+            <span style={{ fontSize: "1rem", fontWeight: 800, color: "var(--wt-text)", minWidth: 40, textAlign: "center" }}>{hours}</span>
             <button type="button" onClick={() => setHours(h => Math.min(12, h + 0.5))}
               className="w-8 h-8 rounded-xl flex items-center justify-center transition"
-              style={{ background: "#ede9fe", color: "#7c3aed", fontWeight: 800, fontSize: "1rem" }}>+</button>
-            <span style={{ fontSize: "0.8rem", color: "#7c6a9e" }}>ชม.</span>
+              style={{ background: "var(--wt-border)", color: "#7c3aed", fontWeight: 800, fontSize: "1rem" }}>+</button>
+            <span style={{ fontSize: "0.8rem", color: "var(--wt-muted)" }}>ชม.</span>
           </div>
         </div>
 
         <div className="flex gap-2 pt-1">
           <button type="button" onClick={onCancel}
             className="flex-1 py-3 rounded-xl transition"
-            style={{ border: "2px solid #ede9fe", color: "#7c6a9e", fontSize: "0.88rem", fontWeight: 700, background: "transparent" }}>
+            style={{ border: "2px solid var(--wt-border)", color: "var(--wt-muted)", fontSize: "0.88rem", fontWeight: 700, background: "transparent" }}>
             ยกเลิก
           </button>
           <button type="submit"
@@ -157,7 +157,7 @@ function EntryCard({ entry, onToggle, onDelete }: EntryCardProps) {
     <div
       className="group flex gap-3 rounded-2xl p-4 transition-all bg-white"
       style={{
-        border: `2px solid ${entry.done ? "#bbf7d0" : "#ede9fe"}`,
+        border: `2px solid ${entry.done ? "#bbf7d0" : "var(--wt-border)"}`,
         opacity: entry.done ? 0.8 : 1,
         boxShadow: "0 2px 8px rgba(124,58,237,0.06)",
       }}
@@ -173,17 +173,17 @@ function EntryCard({ entry, onToggle, onDelete }: EntryCardProps) {
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <p className={entry.done ? "line-through" : ""} style={{ fontSize: "0.9rem", fontWeight: 700, color: entry.done ? "#7c6a9e" : "#2d1f6e" }}>
+        <p className={entry.done ? "line-through" : ""} style={{ fontSize: "0.9rem", fontWeight: 700, color: entry.done ? "var(--wt-muted)" : "var(--wt-text)" }}>
           {entry.title}
         </p>
         {entry.note && (
-          <p className="mt-0.5" style={{ fontSize: "0.78rem", color: "#7c6a9e" }}>{entry.note}</p>
+          <p className="mt-0.5" style={{ fontSize: "0.78rem", color: "var(--wt-muted)" }}>{entry.note}</p>
         )}
         <div className="flex items-center gap-2 mt-2">
           <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: cat.bg, color: cat.text, fontSize: "0.72rem", fontWeight: 700 }}>
             {cat.emoji} {entry.category}
           </span>
-          <span className="flex items-center gap-1 px-2.5 py-1 rounded-full" style={{ background: "#ede9fe", color: "#7c3aed", fontSize: "0.72rem", fontWeight: 700 }}>
+          <span className="flex items-center gap-1 px-2.5 py-1 rounded-full" style={{ background: "var(--wt-border)", color: "#7c3aed", fontSize: "0.72rem", fontWeight: 700 }}>
             <Clock size={10} /> {entry.hours} ชม.
           </span>
         </div>
@@ -229,7 +229,7 @@ export function DailyLog({ entries, onEntriesChange }: DailyLogProps) {
   return (
     <div className="flex flex-col gap-4 h-full">
       {/* Date nav */}
-      <div className="bg-white rounded-2xl overflow-hidden" style={{ border: "2px solid #ede9fe", boxShadow: "0 4px 16px rgba(124,58,237,0.1)" }}>
+      <div className="bg-white rounded-2xl overflow-hidden" style={{ border: "2px solid var(--wt-border)", boxShadow: "0 4px 16px rgba(124,58,237,0.1)" }}>
         {/* Header gradient */}
         <div className="px-5 py-4" style={{ background: "linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #ec4899 100%)" }}>
           <div className="flex items-center justify-between">
@@ -269,7 +269,7 @@ export function DailyLog({ entries, onEntriesChange }: DailyLogProps) {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 divide-x" style={{ borderTop: "1px solid #ede9fe" }}>
+        <div className="grid grid-cols-3 divide-x" style={{ borderTop: "1px solid var(--wt-border)" }}>
           {[
             { label: "รายการทั้งหมด", value: dayEntries.length, emoji: "📋", color: "#7c3aed" },
             { label: "เสร็จแล้ว",    value: doneCount,          emoji: "✅", color: "#34d399" },
@@ -278,7 +278,7 @@ export function DailyLog({ entries, onEntriesChange }: DailyLogProps) {
             <div key={s.label} className="flex flex-col items-center py-4 px-3">
               <span style={{ fontSize: "1.3rem" }}>{s.emoji}</span>
               <span style={{ fontSize: "1.5rem", fontWeight: 900, color: s.color }}>{s.value}</span>
-              <span style={{ fontSize: "0.7rem", color: "#7c6a9e", fontWeight: 600 }}>{s.label}</span>
+              <span style={{ fontSize: "0.7rem", color: "var(--wt-muted)", fontWeight: 600 }}>{s.label}</span>
             </div>
           ))}
         </div>
@@ -287,10 +287,10 @@ export function DailyLog({ entries, onEntriesChange }: DailyLogProps) {
         {dayEntries.length > 0 && (
           <div className="px-5 pb-4">
             <div className="flex items-center justify-between mb-1.5">
-              <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#7c6a9e" }}>ความคืบหน้า</span>
+              <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--wt-muted)" }}>ความคืบหน้า</span>
               <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#7c3aed" }}>{completionPct}%</span>
             </div>
-            <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "#ede9fe" }}>
+            <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "var(--wt-border)" }}>
               <div className="h-full rounded-full transition-all duration-500"
                 style={{ width: `${completionPct}%`, background: "linear-gradient(90deg, #7c3aed, #34d399)" }} />
             </div>
@@ -301,12 +301,12 @@ export function DailyLog({ entries, onEntriesChange }: DailyLogProps) {
       {/* Entries */}
       <div className="flex-1 overflow-y-auto space-y-2.5" style={{ scrollbarWidth: "none" }}>
         {dayEntries.length === 0 && !showAdd && (
-          <div className="flex flex-col items-center justify-center py-16" style={{ color: "#7c6a9e" }}>
-            <div className="w-20 h-20 rounded-full flex items-center justify-center mb-4" style={{ background: "#ede9fe" }}>
+          <div className="flex flex-col items-center justify-center py-16" style={{ color: "var(--wt-muted)" }}>
+            <div className="w-20 h-20 rounded-full flex items-center justify-center mb-4" style={{ background: "var(--wt-border)" }}>
               <Pencil size={32} style={{ color: "#a78bfa" }} />
             </div>
-            <p style={{ fontSize: "1rem", fontWeight: 800, color: "#2d1f6e" }}>ยังไม่มีรายการงาน</p>
-            <p style={{ fontSize: "0.82rem", color: "#7c6a9e", marginTop: 4 }}>เริ่มบันทึกงานที่ทำวันนี้กันเลย!</p>
+            <p style={{ fontSize: "1rem", fontWeight: 800, color: "var(--wt-text)" }}>ยังไม่มีรายการงาน</p>
+            <p style={{ fontSize: "0.82rem", color: "var(--wt-muted)", marginTop: 4 }}>เริ่มบันทึกงานที่ทำวันนี้กันเลย!</p>
           </div>
         )}
         {dayEntries.map(entry => (

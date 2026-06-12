@@ -29,26 +29,26 @@ const COLUMN_CONFIG: Record<Status, {
 }> = {
   todo: {
     label: "รอดำเนินการ", emoji: "📋",
-    bg: "#f0f9ff", border: "#bae6fd", headerBg: "#e0f2fe", headerText: "#075985",
+    bg: "var(--wt-tint-blue)", border: "#bae6fd", headerBg: "#e0f2fe", headerText: "#075985",
     badgeBg: "#bae6fd", badgeText: "#075985", btnBg: "#e0f2fe", btnText: "#0369a1",
     dotColor: "#38bdf8",
   },
   inprogress: {
     label: "กำลังดำเนินการ", emoji: "⚡",
-    bg: "#fff7ed", border: "#fed7aa", headerBg: "#ffedd5", headerText: "#9a3412",
+    bg: "var(--wt-tint-orange)", border: "#fed7aa", headerBg: "#ffedd5", headerText: "#9a3412",
     badgeBg: "#fed7aa", badgeText: "#9a3412", btnBg: "#ffedd5", btnText: "#c2410c",
     dotColor: "#fb923c",
   },
   done: {
     label: "เสร็จสิ้น", emoji: "✅",
-    bg: "#f0fdf4", border: "#bbf7d0", headerBg: "#dcfce7", headerText: "#166534",
+    bg: "var(--wt-tint-green)", border: "#bbf7d0", headerBg: "#dcfce7", headerText: "#166534",
     badgeBg: "#bbf7d0", badgeText: "#166534", btnBg: "#dcfce7", btnText: "#15803d",
     dotColor: "#34d399",
   },
 };
 
 const TAG_PALETTES = [
-  { bg: "#ede9fe", text: "#5b21b6" },
+  { bg: "var(--wt-border)", text: "#5b21b6" },
   { bg: "#fce7f3", text: "#9d174d" },
   { bg: "#e0f2fe", text: "#075985" },
   { bg: "#fef3c7", text: "#92400e" },
@@ -110,12 +110,12 @@ function AddTaskModal({ status, onAdd, onClose }: AddTaskModalProps) {
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "#7c6a9e", textTransform: "uppercase", letterSpacing: "0.05em" }}>ชื่องาน *</label>
+            <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--wt-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>ชื่องาน *</label>
             <input
               className="w-full mt-1 px-4 py-3 rounded-xl outline-none transition"
-              style={{ border: "2px solid #ede9fe", background: "#faf8ff", fontSize: "0.92rem", color: "#2d1f6e", fontFamily: "inherit" }}
+              style={{ border: "2px solid var(--wt-border)", background: "var(--wt-soft)", fontSize: "0.92rem", color: "var(--wt-text)", fontFamily: "inherit" }}
               onFocus={e => (e.target.style.borderColor = "#a78bfa")}
-              onBlur={e => (e.target.style.borderColor = "#ede9fe")}
+              onBlur={e => (e.target.style.borderColor = "var(--wt-border)")}
               placeholder="เช่น ทำรายงานประจำเดือน..."
               value={title}
               onChange={e => setTitle(e.target.value)}
@@ -124,12 +124,12 @@ function AddTaskModal({ status, onAdd, onClose }: AddTaskModalProps) {
           </div>
 
           <div>
-            <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "#7c6a9e", textTransform: "uppercase", letterSpacing: "0.05em" }}>รายละเอียด</label>
+            <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--wt-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>รายละเอียด</label>
             <textarea
               className="w-full mt-1 px-4 py-3 rounded-xl outline-none transition resize-none"
-              style={{ border: "2px solid #ede9fe", background: "#faf8ff", fontSize: "0.87rem", color: "#2d1f6e", fontFamily: "inherit" }}
+              style={{ border: "2px solid var(--wt-border)", background: "var(--wt-soft)", fontSize: "0.87rem", color: "var(--wt-text)", fontFamily: "inherit" }}
               onFocus={e => (e.target.style.borderColor = "#a78bfa")}
-              onBlur={e => (e.target.style.borderColor = "#ede9fe")}
+              onBlur={e => (e.target.style.borderColor = "var(--wt-border)")}
               placeholder="รายละเอียดเพิ่มเติม..."
               value={description}
               onChange={e => setDescription(e.target.value)}
@@ -139,7 +139,7 @@ function AddTaskModal({ status, onAdd, onClose }: AddTaskModalProps) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "#7c6a9e", textTransform: "uppercase", letterSpacing: "0.05em" }}>ความสำคัญ</label>
+              <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--wt-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>ความสำคัญ</label>
               <div className="flex flex-col gap-1.5 mt-2">
                 {(["low", "medium", "high"] as Priority[]).map(p => {
                   const cfg = PRIORITY_CONFIG[p];
@@ -149,8 +149,8 @@ function AddTaskModal({ status, onAdd, onClose }: AddTaskModalProps) {
                       className="flex items-center gap-2 px-3 py-1.5 rounded-xl transition"
                       style={{
                         background: active ? cfg.bg : "transparent",
-                        border: `2px solid ${active ? cfg.bar : "#ede9fe"}`,
-                        color: active ? cfg.text : "#7c6a9e",
+                        border: `2px solid ${active ? cfg.bar : "var(--wt-border)"}`,
+                        color: active ? cfg.text : "var(--wt-muted)",
                         fontSize: "0.82rem", fontWeight: active ? 700 : 500,
                       }}>
                       <span className="w-2 h-2 rounded-full" style={{ background: cfg.bar }} />
@@ -161,13 +161,13 @@ function AddTaskModal({ status, onAdd, onClose }: AddTaskModalProps) {
               </div>
             </div>
             <div>
-              <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "#7c6a9e", textTransform: "uppercase", letterSpacing: "0.05em" }}>กำหนดส่ง</label>
+              <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--wt-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>กำหนดส่ง</label>
               <input
                 type="date"
                 className="w-full mt-1 px-3 py-2.5 rounded-xl outline-none transition"
-                style={{ border: "2px solid #ede9fe", background: "#faf8ff", fontSize: "0.85rem", color: "#2d1f6e", fontFamily: "inherit" }}
+                style={{ border: "2px solid var(--wt-border)", background: "var(--wt-soft)", fontSize: "0.85rem", color: "var(--wt-text)", fontFamily: "inherit" }}
                 onFocus={e => (e.target.style.borderColor = "#a78bfa")}
-                onBlur={e => (e.target.style.borderColor = "#ede9fe")}
+                onBlur={e => (e.target.style.borderColor = "var(--wt-border)")}
                 value={dueDate}
                 onChange={e => setDueDate(e.target.value)}
               />
@@ -175,13 +175,13 @@ function AddTaskModal({ status, onAdd, onClose }: AddTaskModalProps) {
           </div>
 
           <div>
-            <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "#7c6a9e", textTransform: "uppercase", letterSpacing: "0.05em" }}>แท็ก</label>
+            <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--wt-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>แท็ก</label>
             <div className="flex gap-2 mt-1">
               <input
                 className="flex-1 px-3 py-2.5 rounded-xl outline-none transition"
-                style={{ border: "2px solid #ede9fe", background: "#faf8ff", fontSize: "0.85rem", color: "#2d1f6e", fontFamily: "inherit" }}
+                style={{ border: "2px solid var(--wt-border)", background: "var(--wt-soft)", fontSize: "0.85rem", color: "var(--wt-text)", fontFamily: "inherit" }}
                 onFocus={e => (e.target.style.borderColor = "#a78bfa")}
-                onBlur={e => (e.target.style.borderColor = "#ede9fe")}
+                onBlur={e => (e.target.style.borderColor = "var(--wt-border)")}
                 placeholder="พิมพ์แท็ก Enter เพื่อเพิ่ม..."
                 value={tagInput}
                 onChange={e => setTagInput(e.target.value)}
@@ -206,8 +206,8 @@ function AddTaskModal({ status, onAdd, onClose }: AddTaskModalProps) {
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose}
               className="flex-1 py-3 rounded-xl transition"
-              style={{ border: "2px solid #ede9fe", color: "#7c6a9e", fontSize: "0.9rem", fontWeight: 700, background: "transparent" }}
-              onMouseEnter={e => (e.currentTarget.style.background = "#f5f3ff")}
+              style={{ border: "2px solid var(--wt-border)", color: "var(--wt-muted)", fontSize: "0.9rem", fontWeight: 700, background: "transparent" }}
+              onMouseEnter={e => (e.currentTarget.style.background = "var(--wt-soft2)")}
               onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
               ยกเลิก
             </button>
@@ -257,34 +257,34 @@ function TaskCard({ task, onDelete, onMove, onDragStart }: TaskCardProps) {
     >
       <div className="p-4">
         <div className="flex items-start gap-2">
-          <GripVertical size={14} className="opacity-0 group-hover:opacity-30 mt-0.5 shrink-0 transition" style={{ color: "#7c6a9e" }} />
+          <GripVertical size={14} className="opacity-0 group-hover:opacity-30 mt-0.5 shrink-0 transition" style={{ color: "var(--wt-muted)" }} />
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
-              <p className="leading-snug" style={{ fontSize: "0.88rem", fontWeight: 700, color: "#2d1f6e" }}>{task.title}</p>
+              <p className="leading-snug" style={{ fontSize: "0.88rem", fontWeight: 700, color: "var(--wt-text)" }}>{task.title}</p>
               <div className="relative shrink-0">
                 <button onClick={() => setMenuOpen(!menuOpen)}
                   className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg transition"
-                  style={{ color: "#7c6a9e" }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "#f5f3ff")}
+                  style={{ color: "var(--wt-muted)" }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "var(--wt-soft2)")}
                   onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
                   <MoreHorizontal size={14} />
                 </button>
                 {menuOpen && (
                   <div className="absolute right-0 top-8 z-20 bg-white rounded-2xl shadow-xl overflow-hidden py-2 w-40"
-                    style={{ border: "2px solid #ede9fe" }} onMouseLeave={() => setMenuOpen(false)}>
+                    style={{ border: "2px solid var(--wt-border)" }} onMouseLeave={() => setMenuOpen(false)}>
                     {others.map(s => {
                       const col = COLUMN_CONFIG[s];
                       return (
                         <button key={s} onClick={() => { onMove(task.id, s); setMenuOpen(false); }}
                           className="flex items-center gap-2 w-full px-4 py-2 text-left transition"
-                          style={{ fontSize: "0.8rem", fontWeight: 600, color: "#2d1f6e" }}
+                          style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--wt-text)" }}
                           onMouseEnter={e => (e.currentTarget.style.background = col.headerBg)}
                           onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
                           <span>{col.emoji}</span> {col.label}
                         </button>
                       );
                     })}
-                    <div style={{ borderTop: "1px solid #ede9fe", margin: "4px 0" }} />
+                    <div style={{ borderTop: "1px solid var(--wt-border)", margin: "4px 0" }} />
                     <button onClick={() => { onDelete(task.id); setMenuOpen(false); }}
                       className="flex items-center gap-2 w-full px-4 py-2 text-left transition"
                       style={{ fontSize: "0.8rem", fontWeight: 600, color: "#f43f5e" }}
@@ -298,7 +298,7 @@ function TaskCard({ task, onDelete, onMove, onDragStart }: TaskCardProps) {
             </div>
 
             {task.description && (
-              <p className="mt-1 line-clamp-2" style={{ fontSize: "0.78rem", color: "#7c6a9e" }}>{task.description}</p>
+              <p className="mt-1 line-clamp-2" style={{ fontSize: "0.78rem", color: "var(--wt-muted)" }}>{task.description}</p>
             )}
 
             {task.tags.length > 0 && (
@@ -317,7 +317,7 @@ function TaskCard({ task, onDelete, onMove, onDragStart }: TaskCardProps) {
                 {pri.label}
               </span>
               {task.dueDate && (
-                <span className="flex items-center gap-1" style={{ fontSize: "0.72rem", color: "#7c6a9e" }}>
+                <span className="flex items-center gap-1" style={{ fontSize: "0.72rem", color: "var(--wt-muted)" }}>
                   <Clock size={10} /> {task.dueDate}
                 </span>
               )}
@@ -395,7 +395,7 @@ export function KanbanBoard({ tasks, onTasksChange }: KanbanBoardProps) {
               {/* Cards */}
               <div className="flex-1 overflow-y-auto p-3 space-y-2" style={{ scrollbarWidth: "none" }}>
                 {colTasks.length === 0 && (
-                  <div className="flex flex-col items-center justify-center py-10" style={{ color: col.headerText, opacity: 0.4 }}>
+                  <div className="flex flex-col items-center justify-center py-10" style={{ color: "var(--wt-muted)", opacity: 0.6 }}>
                     <Sparkles size={28} className="mb-2" />
                     <p style={{ fontSize: "0.8rem", fontWeight: 700 }}>ยังไม่มีงาน</p>
                     <p style={{ fontSize: "0.72rem" }}>กดปุ่ม + เพื่อเพิ่มงาน</p>
