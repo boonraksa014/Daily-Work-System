@@ -37,3 +37,4 @@ Thumbs.db
 
 # Local Claude Code tooling / personal config (not project code)
 .claude/
+.impeccable/
