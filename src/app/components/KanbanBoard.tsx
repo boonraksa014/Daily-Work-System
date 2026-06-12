@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Plus, MoreHorizontal, Clock, Trash2, X, GripVertical, Sparkles } from "lucide-react";
+import { makeId } from "../lib/id";
 
 export type Priority = "low" | "medium" | "high";
 export type Status = "todo" | "inprogress" | "done";
@@ -339,7 +340,7 @@ export function KanbanBoard({ tasks, onTasksChange }: KanbanBoardProps) {
   const [dragOverCol, setDragOverCol] = useState<Status | null>(null);
 
   function addTask(data: Omit<Task, "id" | "createdAt">) {
-    onTasksChange([...tasks, { ...data, id: `task-${Date.now()}`, createdAt: new Date().toISOString().split("T")[0] }]);
+    onTasksChange([...tasks, { ...data, id: makeId("task"), createdAt: new Date().toISOString().split("T")[0] }]);
   }
 
   function deleteTask(id: string) { onTasksChange(tasks.filter(t => t.id !== id)); }

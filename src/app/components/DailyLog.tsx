@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Plus, Trash2, Clock, Calendar, ChevronLeft, ChevronRight, CheckCircle2, Circle, Pencil } from "lucide-react";
+import { makeId } from "../lib/id";
 
 export interface LogEntry {
   id: string;
@@ -34,6 +35,10 @@ function offsetDate(date: string, days: number) {
 function formatDateThai(dateStr: string) {
   const d = new Date(dateStr);
   return d.toLocaleDateString("th-TH", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+}
+
+function weekdayThai(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString("th-TH", { weekday: "long" });
 }
 
 interface InlineAddFormProps {
@@ -214,7 +219,7 @@ export function DailyLog({ entries, onEntriesChange }: DailyLogProps) {
   const isPast = selectedDate < todayStr();
 
   function addEntry(data: Omit<LogEntry, "id">) {
-    onEntriesChange([...entries, { ...data, id: `log-${Date.now()}` }]);
+    onEntriesChange([...entries, { ...data, id: makeId("log") }]);
     setShowAdd(false);
   }
 
@@ -235,7 +240,7 @@ export function DailyLog({ entries, onEntriesChange }: DailyLogProps) {
               </button>
               <div>
                 <p style={{ fontSize: "1rem", fontWeight: 800, color: "white" }}>
-                  {isToday ? "📅 วันนี้" : isPast ? "📂 " + formatDateThai(selectedDate).split(" ")[0] : "📅 " + formatDateThai(selectedDate).split(" ")[0]}
+                  {isToday ? "📅 วันนี้" : (isPast ? "📂 " : "📅 ") + weekdayThai(selectedDate)}
                 </p>
                 <p style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.8)" }}>{formatDateThai(selectedDate)}</p>
               </div>
