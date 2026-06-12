@@ -34,3 +34,6 @@ Thumbs.db
 
 # Vite cache
 .vite/
+
+# Local Claude Code tooling / personal config (not project code)
+.claude/
