@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Plus, Trash2, Clock, ChevronLeft, ChevronRight, CheckCircle2, Circle, Pencil, Search, X } from "lucide-react";
 import { makeId } from "../lib/id";
+import type { Category } from "../types";
 
 export interface LogEntry {
   id: string;
@@ -14,17 +15,10 @@ export interface LogEntry {
   done: boolean;
 }
 
-const CATEGORIES = ["พัฒนาระบบ", "ประชุม", "วางแผน", "ทดสอบ", "เอกสาร", "สนับสนุน", "อื่นๆ"];
-
-const CAT_CONFIG: Record<string, { bg: string; text: string; emoji: string }> = {
-  "พัฒนาระบบ": { bg: "var(--wt-border)", text: "#5b21b6", emoji: "💻" },
-  "ประชุม":    { bg: "#e0f2fe", text: "#075985", emoji: "🤝" },
-  "วางแผน":   { bg: "#fce7f3", text: "#9d174d", emoji: "📐" },
-  "ทดสอบ":    { bg: "#fef3c7", text: "#92400e", emoji: "🧪" },
-  "เอกสาร":   { bg: "#d1fae5", text: "#065f46", emoji: "📄" },
-  "สนับสนุน":  { bg: "#e0f2fe", text: "#0369a1", emoji: "🛠️" },
-  "อื่นๆ":    { bg: "#f3f4f6", text: "#374151", emoji: "📌" },
-};
+/** หา category ตามชื่อ; ถ้าถูกลบไปแล้วคืนค่า fallback กลางๆ */
+function findCat(categories: Category[], name: string): Category {
+  return categories.find(c => c.name === name) ?? { id: "", name, emoji: "📌", color: "#94a3b8" };
+}
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 
@@ -46,16 +40,17 @@ function weekdayThai(dateStr: string) {
 interface EntryFormProps {
   date: string;
   initial?: LogEntry;
+  categories: Category[];
   onSubmit: (entry: Omit<LogEntry, "id">) => void;
   onCancel: () => void;
 }
 
-function EntryForm({ date, initial, onSubmit, onCancel }: EntryFormProps) {
+function EntryForm({ date, initial, categories, onSubmit, onCancel }: EntryFormProps) {
   const isEdit = !!initial;
   const [title, setTitle] = useState(initial?.title ?? "");
   const [note, setNote] = useState(initial?.note ?? "");
   const [hours, setHours] = useState(initial?.hours ?? 1);
-  const [category, setCategory] = useState(initial?.category ?? CATEGORIES[0]);
+  const [category, setCategory] = useState(initial?.category ?? categories[0]?.name ?? "");
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -94,19 +89,18 @@ function EntryForm({ date, initial, onSubmit, onCancel }: EntryFormProps) {
         <div>
           <p style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--wt-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>หมวดหมู่</p>
           <div className="flex flex-wrap gap-2">
-            {CATEGORIES.map(c => {
-              const cfg = CAT_CONFIG[c];
-              const active = category === c;
+            {categories.map(c => {
+              const active = category === c.name;
               return (
-                <button key={c} type="button" onClick={() => setCategory(c)}
+                <button key={c.id} type="button" onClick={() => setCategory(c.name)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition"
                   style={{
-                    background: active ? cfg.bg : "var(--wt-soft2)",
-                    color: active ? cfg.text : "var(--wt-muted)",
-                    border: `2px solid ${active ? cfg.text + "40" : "transparent"}`,
+                    background: active ? c.color + "22" : "var(--wt-soft2)",
+                    color: active ? "var(--wt-text)" : "var(--wt-muted)",
+                    border: `2px solid ${active ? c.color : "transparent"}`,
                     fontSize: "0.78rem", fontWeight: 700,
                   }}>
-                  <span>{cfg.emoji}</span>{c}
+                  <span>{c.emoji}</span>{c.name}
                 </button>
               );
             })}
@@ -150,13 +144,14 @@ function EntryForm({ date, initial, onSubmit, onCancel }: EntryFormProps) {
 
 interface EntryCardProps {
   entry: LogEntry;
+  categories: Category[];
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (id: string) => void;
 }
 
-function EntryCard({ entry, onToggle, onDelete, onEdit }: EntryCardProps) {
-  const cat = CAT_CONFIG[entry.category] ?? CAT_CONFIG["อื่นๆ"];
+function EntryCard({ entry, categories, onToggle, onDelete, onEdit }: EntryCardProps) {
+  const cat = findCat(categories, entry.category);
 
   return (
     <div
@@ -185,7 +180,7 @@ function EntryCard({ entry, onToggle, onDelete, onEdit }: EntryCardProps) {
           <p className="mt-0.5" style={{ fontSize: "0.78rem", color: "var(--wt-muted)" }}>{entry.note}</p>
         )}
         <div className="flex items-center gap-2 mt-2">
-          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: cat.bg, color: cat.text, fontSize: "0.72rem", fontWeight: 700 }}>
+          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: cat.color + "22", color: "var(--wt-text)", fontSize: "0.72rem", fontWeight: 700 }}>
             {cat.emoji} {entry.category}
           </span>
           <span className="flex items-center gap-1 px-2.5 py-1 rounded-full" style={{ background: "var(--wt-border)", color: "#7c3aed", fontSize: "0.72rem", fontWeight: 700 }}>
@@ -215,12 +210,13 @@ function EntryCard({ entry, onToggle, onDelete, onEdit }: EntryCardProps) {
 
 interface DailyLogProps {
   entries: LogEntry[];
+  categories: Category[];
   onEntriesChange: (entries: LogEntry[]) => void;
   /** ถ้าส่งมา จะใช้แทนการลบตรงๆ (เพื่อให้มี undo) */
   onDeleteEntry?: (id: string) => void;
 }
 
-export function DailyLog({ entries, onEntriesChange, onDeleteEntry }: DailyLogProps) {
+export function DailyLog({ entries, categories, onEntriesChange, onDeleteEntry }: DailyLogProps) {
   const [selectedDate, setSelectedDate] = useState(todayStr());
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -369,14 +365,14 @@ export function DailyLog({ entries, onEntriesChange, onDeleteEntry }: DailyLogPr
         )}
         {visibleEntries.map(entry => (
           editingId === entry.id ? (
-            <EntryForm key={entry.id} date={entry.date} initial={entry}
+            <EntryForm key={entry.id} date={entry.date} initial={entry} categories={categories}
               onSubmit={data => updateEntry(entry.id, data)} onCancel={() => setEditingId(null)} />
           ) : (
-            <EntryCard key={entry.id} entry={entry} onToggle={toggleEntry} onDelete={deleteEntry} onEdit={setEditingId} />
+            <EntryCard key={entry.id} entry={entry} categories={categories} onToggle={toggleEntry} onDelete={deleteEntry} onEdit={setEditingId} />
           )
         ))}
         {showAdd && (
-          <EntryForm onSubmit={addEntry} onCancel={() => setShowAdd(false)} date={selectedDate} />
+          <EntryForm onSubmit={addEntry} onCancel={() => setShowAdd(false)} date={selectedDate} categories={categories} />
         )}
       </div>
 

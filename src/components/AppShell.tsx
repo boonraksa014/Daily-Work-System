@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
   LayoutDashboard, Kanban, BookOpen, BarChart3,
-  Sun, Moon, Menu, X
+  Sun, Moon, Menu, X, Settings, ChevronDown
 } from "lucide-react";
 import { useData } from "@/lib/store";
 import { Logo } from "@/components/Logo";
@@ -18,14 +18,23 @@ const NAV_ITEMS = [
   { href: "/reports", label: "รายงาน",        emoji: "📊", icon: <BarChart3 size={17} />,        gradient: "linear-gradient(135deg, #d97706, #fbbf24)" },
 ];
 
+const SETTINGS_ITEMS = [
+  { href: "/settings/categories", label: "หมวดหมู่", emoji: "🏷️" },
+];
+
+const SETTINGS_NAV = { label: "ตั้งค่า · หมวดหมู่", icon: <Settings size={17} />, gradient: "linear-gradient(135deg, #475569, #94a3b8)" };
+
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { tasks } = useData();
   const { resolvedTheme, setTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const isDark = resolvedTheme === "dark";
-  const currentNav = NAV_ITEMS.find(n => n.href === pathname) ?? NAV_ITEMS[0];
+  const onSettings = pathname.startsWith("/settings");
+  const settingsExpanded = settingsOpen || onSettings;
+  const currentNav = onSettings ? SETTINGS_NAV : (NAV_ITEMS.find(n => n.href === pathname) ?? NAV_ITEMS[0]);
   const doneTasks = tasks.filter(t => t.status === "done").length;
 
   return (
@@ -71,6 +80,36 @@ export function AppShell({ children }: { children: ReactNode }) {
               </Link>
             );
           })}
+
+          {/* Settings group */}
+          <div className="pt-1">
+            <button onClick={() => setSettingsOpen(o => !o)} aria-expanded={settingsExpanded}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all text-left"
+              style={{ background: "transparent" }}
+              onMouseEnter={e => (e.currentTarget.style.background = "var(--wt-soft2)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+              <span className="text-xl shrink-0">⚙️</span>
+              <span style={{ fontSize: "0.85rem", fontWeight: onSettings ? 800 : 600, color: "var(--wt-text)" }}>ตั้งค่า</span>
+              <ChevronDown size={15} className="ml-auto shrink-0" style={{ color: "var(--wt-muted)", transform: settingsExpanded ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+            </button>
+            {settingsExpanded && (
+              <div className="mt-1 space-y-1" style={{ paddingLeft: 14 }}>
+                {SETTINGS_ITEMS.map(s => {
+                  const active = s.href === pathname;
+                  return (
+                    <Link key={s.href} href={s.href} onClick={() => setSidebarOpen(false)}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 rounded-xl transition-all text-left"
+                      style={{ background: active ? "var(--wt-soft2)" : "transparent" }}
+                      onMouseEnter={e => { if (!active) e.currentTarget.style.background = "var(--wt-soft2)"; }}
+                      onMouseLeave={e => { if (!active) e.currentTarget.style.background = "transparent"; }}>
+                      <span className="text-base shrink-0">{s.emoji}</span>
+                      <span style={{ fontSize: "0.82rem", fontWeight: active ? 800 : 600, color: active ? "#7c3aed" : "var(--wt-text)" }}>{s.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </nav>
 
         {/* Bottom widget */}

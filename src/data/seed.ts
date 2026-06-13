@@ -1,5 +1,17 @@
 import type { Task } from "../components/KanbanBoard";
 import type { LogEntry } from "../components/DailyLog";
+import type { Category } from "../types";
+
+// หมวดหมู่เริ่มต้น — จัดการเพิ่ม/แก้/ลบได้ที่ ตั้งค่า → หมวดหมู่
+export const INITIAL_CATEGORIES: Category[] = [
+  { id: "c1", name: "พัฒนาระบบ", emoji: "💻", color: "#7c3aed" },
+  { id: "c2", name: "ประชุม",    emoji: "🤝", color: "#0ea5e9" },
+  { id: "c3", name: "วางแผน",   emoji: "📐", color: "#db2777" },
+  { id: "c4", name: "ทดสอบ",    emoji: "🧪", color: "#d97706" },
+  { id: "c5", name: "เอกสาร",   emoji: "📄", color: "#059669" },
+  { id: "c6", name: "สนับสนุน",  emoji: "🛠️", color: "#0891b2" },
+  { id: "c7", name: "อื่นๆ",    emoji: "📌", color: "#64748b" },
+];
 
 // ข้อมูลตัวอย่างเริ่มต้น — ใช้ครั้งแรกที่เปิดแอป (ก่อนมีข้อมูลใน localStorage)
 export const INITIAL_TASKS: Task[] = [

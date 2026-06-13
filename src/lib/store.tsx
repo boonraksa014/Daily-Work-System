@@ -4,7 +4,9 @@ import { createContext, useContext, useEffect, useRef, useState, type Dispatch, 
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import type { Task } from "@/components/KanbanBoard";
 import type { LogEntry } from "@/components/DailyLog";
-import { INITIAL_TASKS, INITIAL_LOGS } from "@/data/seed";
+import type { Category } from "@/types";
+import { makeId } from "@/lib/id";
+import { INITIAL_TASKS, INITIAL_LOGS, INITIAL_CATEGORIES } from "@/data/seed";
 
 interface DataContextValue {
   tasks: Task[];
@@ -15,6 +17,10 @@ interface DataContextValue {
   removeTask: (id: string) => void;
   /** ลบรายการบันทึกพร้อม toast ให้กดเลิกทำได้ */
   removeEntry: (id: string) => void;
+  categories: Category[];
+  addCategory: (data: Omit<Category, "id">) => void;
+  updateCategory: (id: string, data: Omit<Category, "id">) => void;
+  removeCategory: (id: string) => void;
 }
 
 const DataContext = createContext<DataContextValue | null>(null);
@@ -26,6 +32,7 @@ const DataContext = createContext<DataContextValue | null>(null);
 export function DataProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useLocalStorage<Task[]>("worktrack.tasks", INITIAL_TASKS);
   const [logEntries, setLogEntries] = useLocalStorage<LogEntry[]>("worktrack.logs", INITIAL_LOGS);
+  const [categories, setCategories] = useLocalStorage<Category[]>("worktrack.categories", INITIAL_CATEGORIES);
   const [mounted, setMounted] = useState(false);
   const [toast, setToast] = useState<{ message: string; onUndo: () => void } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -53,12 +60,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
     notify("ลบรายการแล้ว", () => { setToast(null); setLogEntries(prev => prev.some(e => e.id === id) ? prev : [...prev, removed]); });
   }
 
+  function addCategory(data: Omit<Category, "id">) {
+    setCategories(prev => [...prev, { ...data, id: makeId("cat") }]);
+  }
+  function updateCategory(id: string, data: Omit<Category, "id">) {
+    setCategories(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
+  }
+  function removeCategory(id: string) {
+    const removed = categories.find(c => c.id === id);
+    if (!removed) return;
+    setCategories(prev => prev.filter(c => c.id !== id));
+    notify("ลบหมวดหมู่แล้ว", () => { setToast(null); setCategories(prev => prev.some(c => c.id === id) ? prev : [...prev, removed]); });
+  }
+
   if (!mounted) {
     return <div style={{ height: "100vh", background: "var(--wt-page)" }} aria-hidden />;
   }
 
   return (
-    <DataContext.Provider value={{ tasks, setTasks, logEntries, setLogEntries, removeTask, removeEntry }}>
+    <DataContext.Provider value={{ tasks, setTasks, logEntries, setLogEntries, removeTask, removeEntry, categories, addCategory, updateCategory, removeCategory }}>
       {children}
       {toast && (
         <div role="status" aria-live="polite"

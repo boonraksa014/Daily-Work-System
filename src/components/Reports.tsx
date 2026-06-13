@@ -8,21 +8,13 @@ import {
 import { TrendingUp, Clock, CheckCircle2, BarChart2, Target, Award, Zap } from "lucide-react";
 import type { LogEntry } from "./DailyLog";
 import type { Task } from "./KanbanBoard";
+import type { Category } from "@/types";
 
 interface ReportsProps {
   logEntries: LogEntry[];
   tasks: Task[];
+  categories: Category[];
 }
-
-const CAT_COLORS: Record<string, string> = {
-  "พัฒนาระบบ": "#a78bfa",
-  "ประชุม":    "#38bdf8",
-  "วางแผน":   "#f472b6",
-  "ทดสอบ":    "#fbbf24",
-  "เอกสาร":   "#34d399",
-  "สนับสนุน":  "#22d3ee",
-  "อื่นๆ":    "#94a3b8",
-};
 
 const STAT_CARDS = [
   { key: "hours",      emoji: "⏱️", label: "ชั่วโมงงานทั้งหมด", unit: "ชม.",      accent: "#7c3aed", chip: "#ede9fe" },
@@ -52,8 +44,9 @@ function CustomTooltip({ active, payload, label, unitSuffix = "" }: CustomToolti
   );
 }
 
-export function Reports({ logEntries, tasks }: ReportsProps) {
+export function Reports({ logEntries, tasks, categories }: ReportsProps) {
   const [rangeDays, setRangeDays] = useState(7);
+  const catColor = (name: string) => categories.find(c => c.name === name)?.color ?? "#a78bfa";
 
   // Per-day series over the selected range (oldest -> newest)
   const days = Array.from({ length: rangeDays }, (_, i) => {
@@ -187,7 +180,7 @@ export function Reports({ logEntries, tasks }: ReportsProps) {
               <PieChart>
                 <Pie data={categoryData} cx="50%" cy="45%" innerRadius={45} outerRadius={72} paddingAngle={4} dataKey="value">
                   {categoryData.map((entry, i) => (
-                    <Cell key={`cat-${i}`} fill={CAT_COLORS[entry.name] || "#a78bfa"} strokeWidth={0} />
+                    <Cell key={`cat-${i}`} fill={catColor(entry.name)} strokeWidth={0} />
                   ))}
                 </Pie>
                 <Tooltip content={<CustomTooltip unitSuffix="ชม." />} />
