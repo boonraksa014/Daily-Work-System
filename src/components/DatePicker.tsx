@@ -121,7 +121,7 @@ export function DatePicker({ value, onChange, min, max, tone = "default", placeh
                       height: 32, fontSize: "0.8rem", fontWeight: selected || isToday ? 800 : 600,
                       cursor: off ? "not-allowed" : "pointer", opacity: off ? 0.3 : 1,
                       background: selected ? "linear-gradient(135deg, #7c3aed, #a855f7)" : "transparent",
-                      color: selected ? "#fff" : isToday ? "#7c3aed" : "var(--wt-text)",
+                      color: selected ? "#fff" : "var(--wt-text)",
                       border: isToday && !selected ? "1px solid #a78bfa" : "1px solid transparent",
                     }}
                     onMouseEnter={e => { if (!selected && !off) e.currentTarget.style.background = "var(--wt-soft2)"; }}

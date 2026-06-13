@@ -25,7 +25,7 @@ const SETTINGS_ITEMS = [
   { href: "/settings/data",       label: "ข้อมูล",   emoji: "💾" },
 ];
 
-const SETTINGS_NAV = { label: "ตั้งค่า · หมวดหมู่", icon: <Settings size={17} />, gradient: "linear-gradient(135deg, #475569, #94a3b8)" };
+const SETTINGS_GRADIENT = "linear-gradient(135deg, #475569, #94a3b8)";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -37,7 +37,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isDark = resolvedTheme === "dark";
   const onSettings = pathname.startsWith("/settings");
   const settingsExpanded = settingsOpen || onSettings;
-  const currentNav = onSettings ? SETTINGS_NAV : (NAV_ITEMS.find(n => n.href === pathname) ?? NAV_ITEMS[0]);
+  const activeSettings = SETTINGS_ITEMS.find(s => pathname.startsWith(s.href));
+  const currentNav = onSettings
+    ? { label: `ตั้งค่า · ${activeSettings?.label ?? ""}`, icon: <Settings size={17} />, gradient: SETTINGS_GRADIENT }
+    : (NAV_ITEMS.find(n => n.href === pathname) ?? NAV_ITEMS[0]);
   const doneTasks = tasks.filter(t => t.status === "done").length;
 
   return (
