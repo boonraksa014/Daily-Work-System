@@ -274,9 +274,11 @@ function TaskCard({ task, onOpenMenu, onDragStart, onDragEnd, isDragging }: Task
 interface KanbanBoardProps {
   tasks: Task[];
   onTasksChange: (tasks: Task[]) => void;
+  /** ถ้าส่งมา จะใช้แทนการลบตรงๆ (เพื่อให้มี undo) */
+  onDeleteTask?: (id: string) => void;
 }
 
-export function KanbanBoard({ tasks, onTasksChange }: KanbanBoardProps) {
+export function KanbanBoard({ tasks, onTasksChange, onDeleteTask }: KanbanBoardProps) {
   const [addingTo, setAddingTo] = useState<Status | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<Status | null>(null);
@@ -301,7 +303,10 @@ export function KanbanBoard({ tasks, onTasksChange }: KanbanBoardProps) {
     onTasksChange([...tasks, { ...data, id: makeId("task"), createdAt: new Date().toISOString().split("T")[0] }]);
   }
 
-  function deleteTask(id: string) { onTasksChange(tasks.filter(t => t.id !== id)); }
+  function deleteTask(id: string) {
+    if (onDeleteTask) onDeleteTask(id);
+    else onTasksChange(tasks.filter(t => t.id !== id));
+  }
   function moveTask(id: string, status: Status) { onTasksChange(tasks.map(t => t.id === id ? { ...t, status } : t)); }
 
   function handleDrop(status: Status) {

@@ -206,9 +206,11 @@ function EntryCard({ entry, onToggle, onDelete }: EntryCardProps) {
 interface DailyLogProps {
   entries: LogEntry[];
   onEntriesChange: (entries: LogEntry[]) => void;
+  /** ถ้าส่งมา จะใช้แทนการลบตรงๆ (เพื่อให้มี undo) */
+  onDeleteEntry?: (id: string) => void;
 }
 
-export function DailyLog({ entries, onEntriesChange }: DailyLogProps) {
+export function DailyLog({ entries, onEntriesChange, onDeleteEntry }: DailyLogProps) {
   const [selectedDate, setSelectedDate] = useState(todayStr());
   const [showAdd, setShowAdd] = useState(false);
 
@@ -226,7 +228,10 @@ export function DailyLog({ entries, onEntriesChange }: DailyLogProps) {
   }
 
   function toggleEntry(id: string) { onEntriesChange(entries.map(e => e.id === id ? { ...e, done: !e.done } : e)); }
-  function deleteEntry(id: string) { onEntriesChange(entries.filter(e => e.id !== id)); }
+  function deleteEntry(id: string) {
+    if (onDeleteEntry) onDeleteEntry(id);
+    else onEntriesChange(entries.filter(e => e.id !== id));
+  }
 
   return (
     <div className="flex flex-col gap-4 h-full">
