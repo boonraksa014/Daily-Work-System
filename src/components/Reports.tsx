@@ -24,10 +24,10 @@ const CAT_COLORS: Record<string, string> = {
 };
 
 const STAT_CARDS = [
-  { key: "hours",      emoji: "⏱️", label: "ชั่วโมงงานทั้งหมด", unit: "ชม.",         gradient: "linear-gradient(135deg, #7c3aed, #a855f7)", shadow: "rgba(124,58,237,0.3)" },
-  { key: "completion", emoji: "✅", label: "อัตราความสำเร็จ",   unit: "%",           gradient: "linear-gradient(135deg, #059669, #34d399)",  shadow: "rgba(52,211,153,0.3)" },
-  { key: "avg",        emoji: "📈", label: "เฉลี่ยต่อวัน",      unit: "ชม./วัน",    gradient: "linear-gradient(135deg, #d97706, #fbbf24)",  shadow: "rgba(251,191,36,0.3)" },
-  { key: "topcat",     emoji: "🏆", label: "หมวดหมู่หลัก",      unit: "",            gradient: "linear-gradient(135deg, #db2777, #f472b6)",  shadow: "rgba(244,114,182,0.3)" },
+  { key: "hours",      emoji: "⏱️", label: "ชั่วโมงงานทั้งหมด", unit: "ชม.",      accent: "#7c3aed", chip: "#ede9fe" },
+  { key: "completion", emoji: "✅", label: "อัตราความสำเร็จ",   unit: "%",        accent: "#059669", chip: "#d1fae5" },
+  { key: "avg",        emoji: "📈", label: "เฉลี่ยต่อวัน",      unit: "ชม./วัน", accent: "#d97706", chip: "#fef3c7" },
+  { key: "topcat",     emoji: "🏆", label: "หมวดหมู่หลัก",      unit: "",         accent: "#db2777", chip: "#fce7f3" },
 ];
 
 interface CustomTooltipProps {
@@ -84,12 +84,11 @@ export function Reports({ logEntries, tasks }: ReportsProps) {
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {STAT_CARDS.map(s => (
-          <div key={s.key} className="rounded-2xl p-4 text-white"
-            style={{ background: s.gradient, boxShadow: `0 6px 20px ${s.shadow}` }}>
-            <span style={{ fontSize: "1.4rem" }}>{s.emoji}</span>
-            <p className="mt-2" style={{ fontSize: "1.7rem", fontWeight: 900, lineHeight: 1 }}>{statValues[s.key]}</p>
-            <p style={{ fontSize: "0.7rem", opacity: 0.85, fontWeight: 600, marginTop: 2 }}>{s.label}</p>
-            {s.unit && <p style={{ fontSize: "0.68rem", opacity: 0.7 }}>{s.unit}</p>}
+          <div key={s.key} className="rounded-2xl p-4 bg-white"
+            style={{ border: "1px solid var(--wt-border)", boxShadow: "0 1px 3px rgba(76,29,149,0.06)" }}>
+            <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl" style={{ background: s.chip, fontSize: "1rem" }}>{s.emoji}</span>
+            <p style={{ fontSize: "1.7rem", fontWeight: 800, lineHeight: 1.1, marginTop: 8, color: s.accent }}>{statValues[s.key]}</p>
+            <p style={{ fontSize: "0.72rem", color: "var(--wt-muted)", fontWeight: 600, marginTop: 2 }}>{s.label}{s.unit ? ` · ${s.unit}` : ""}</p>
           </div>
         ))}
       </div>

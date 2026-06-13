@@ -182,14 +182,13 @@ export function DashboardView({ tasks, logEntries, onNavigate }: DashboardViewPr
         </div>
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: "รอดำเนินการ", emoji: "📋", count: tasks.filter(t => t.status === "todo").length,       gradient: "linear-gradient(135deg, #e0f2fe, #bae6fd)", border: "#7dd3fc", text: "#0369a1" },
-            { label: "กำลังดำเนินการ", emoji: "⚡", count: tasks.filter(t => t.status === "inprogress").length, gradient: "linear-gradient(135deg, #ffedd5, #fed7aa)", border: "#fb923c", text: "#c2410c" },
-            { label: "เสร็จสิ้น",   emoji: "✅", count: doneTasks,                                          gradient: "linear-gradient(135deg, #d1fae5, #a7f3d0)", border: "#34d399", text: "#065f46" },
+            { label: "รอดำเนินการ",    count: tasks.filter(t => t.status === "todo").length,       tint: "var(--wt-tint-blue)",   border: "var(--wt-c-todo-line)", text: "var(--wt-c-todo-ink)" },
+            { label: "กำลังดำเนินการ", count: tasks.filter(t => t.status === "inprogress").length, tint: "var(--wt-tint-orange)", border: "var(--wt-c-prog-line)", text: "var(--wt-c-prog-ink)" },
+            { label: "เสร็จสิ้น",      count: doneTasks,                                          tint: "var(--wt-tint-green)",  border: "var(--wt-c-done-line)", text: "var(--wt-c-done-ink)" },
           ].map(s => (
-            <div key={s.label} className="rounded-2xl p-4 text-center" style={{ background: s.gradient, border: `2px solid ${s.border}` }}>
-              <span style={{ fontSize: "1.5rem" }}>{s.emoji}</span>
-              <p style={{ fontSize: "2rem", fontWeight: 900, color: s.text, lineHeight: 1.1, marginTop: 4 }}>{s.count}</p>
-              <p style={{ fontSize: "0.72rem", fontWeight: 700, color: s.text, opacity: 0.8 }}>{s.label}</p>
+            <div key={s.label} className="rounded-2xl p-4 text-center" style={{ background: s.tint, border: `1px solid ${s.border}` }}>
+              <p style={{ fontSize: "1.9rem", fontWeight: 800, color: s.text, lineHeight: 1.1 }}>{s.count}</p>
+              <p style={{ fontSize: "0.72rem", fontWeight: 700, color: s.text, opacity: 0.85, marginTop: 2 }}>{s.label}</p>
             </div>
           ))}
         </div>
