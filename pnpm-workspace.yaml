@@ -1,6 +1,10 @@
 packages:
   - '.'
 
-# อนุญาตให้ native deps รัน build script ได้ (จำเป็นต่อ tailwind oxide)
+# อนุญาตให้ native deps รัน build script ได้
 onlyBuiltDependencies:
   - '@tailwindcss/oxide'
+
+# sharp (image optimizer ของ Next) ไม่จำเป็นต้อง build — ไม่ได้ใช้ next/image
+ignoredBuiltDependencies:
+  - sharp
