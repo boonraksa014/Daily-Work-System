@@ -152,11 +152,49 @@
   --wt-tint-green: #112318;
 }
 
+/* Per-status accent tokens for the Kanban columns. ink = label/count
+   text (readable on the column tint in both themes); line = border. */
+:root {
+  --wt-focus: #7c3aed;
+  --wt-c-todo-ink: #0369a1;
+  --wt-c-todo-line: #bae6fd;
+  --wt-c-prog-ink: #c2410c;
+  --wt-c-prog-line: #fed7aa;
+  --wt-c-done-ink: #15803d;
+  --wt-c-done-line: #bbf7d0;
+}
+
+.dark {
+  --wt-focus: #a78bfa;
+  --wt-c-todo-ink: #7dd3fc;
+  --wt-c-todo-line: #27415a;
+  --wt-c-prog-ink: #fdba74;
+  --wt-c-prog-line: #46331c;
+  --wt-c-done-ink: #86efac;
+  --wt-c-done-line: #2c4631;
+}
+
 /* Tailwind bg-white cards follow the card token in dark mode.
    The two-class selector outranks .bg-white, and does NOT match
    bg-white/20 (a different class) used on gradient headers. */
 .dark .bg-white {
   background-color: var(--wt-card);
+}
+
+/* Keyboard focus ring, app-wide. Mouse clicks don't trigger it. */
+:where(button, a, input, textarea, select, [role="menuitem"], [tabindex]):focus-visible {
+  outline: 2px solid var(--wt-focus);
+  outline-offset: 2px;
+}
+
+/* Honor reduced-motion: collapse transitions/animations to near-instant. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 @layer base {
