@@ -47,6 +47,13 @@ function tagPalette(tag: string) {
   return TAG_PALETTES[sum % TAG_PALETTES.length];
 }
 
+function todayStr() { return new Date().toISOString().split("T")[0]; }
+function isOverdue(task: Task) { return !!task.dueDate && task.dueDate < todayStr() && task.status !== "done"; }
+
+function toggle<T>(arr: T[], v: T): T[] {
+  return arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v];
+}
+
 const inputStyle: React.CSSProperties = {
   border: "2px solid var(--wt-border)", background: "var(--wt-soft)",
   color: "var(--wt-text)", fontFamily: "inherit",
@@ -207,6 +214,7 @@ interface TaskCardProps {
 
 function TaskCard({ task, onOpenMenu, onDragStart, onDragEnd, isDragging }: TaskCardProps) {
   const pri = PRIORITY_CONFIG[task.priority];
+  const overdue = isOverdue(task);
 
   return (
     <div
@@ -265,8 +273,9 @@ function TaskCard({ task, onOpenMenu, onDragStart, onDragEnd, isDragging }: Task
             {pri.label}
           </span>
           {task.dueDate && (
-            <span className="flex items-center gap-1" style={{ fontSize: "0.72rem", color: "var(--wt-muted)" }}>
-              <Clock size={11} /> {task.dueDate}
+            <span className="flex items-center gap-1" style={{ fontSize: "0.72rem", fontWeight: overdue ? 800 : 400, color: overdue ? "#e11d48" : "var(--wt-muted)" }}
+              title={overdue ? "เลยกำหนดแล้ว" : undefined}>
+              <Clock size={11} /> {task.dueDate}{overdue ? " · เลยกำหนด" : ""}
             </span>
           )}
         </div>
@@ -286,6 +295,8 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask }: KanbanBoardP
   const [addingTo, setAddingTo] = useState<Status | null>(null);
   const [editing, setEditing] = useState<Task | null>(null);
   const [query, setQuery] = useState("");
+  const [priFilter, setPriFilter] = useState<Priority[]>([]);
+  const [tagFilter, setTagFilter] = useState<string[]>([]);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<Status | null>(null);
   const [menu, setMenu] = useState<{ task: Task; x: number; y: number } | null>(null);
@@ -326,30 +337,73 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask }: KanbanBoardP
   }
 
   const q = query.trim().toLowerCase();
-  const matches = (t: Task) => !q || t.title.toLowerCase().includes(q) || (t.description?.toLowerCase().includes(q) ?? false) || t.tags.some(tag => tag.toLowerCase().includes(q));
+  const allTags = Array.from(new Set(tasks.flatMap(t => t.tags))).sort();
+  const filterActive = !!q || priFilter.length > 0 || tagFilter.length > 0;
+  const matches = (t: Task) =>
+    (!q || t.title.toLowerCase().includes(q) || (t.description?.toLowerCase().includes(q) ?? false) || t.tags.some(tag => tag.toLowerCase().includes(q)))
+    && (priFilter.length === 0 || priFilter.includes(t.priority))
+    && (tagFilter.length === 0 || t.tags.some(tag => tagFilter.includes(tag)));
 
   const MENU_WIDTH = 176;
   const menuLeft = menu ? Math.max(8, Math.min(menu.x - MENU_WIDTH, window.innerWidth - MENU_WIDTH - 8)) : 0;
 
   return (
     <div className="flex flex-col h-full gap-3">
-      {/* Search */}
-      <div className="relative shrink-0" style={{ maxWidth: 420 }}>
-        <Search size={15} className="absolute top-1/2 -translate-y-1/2 left-3" style={{ color: "var(--wt-muted)" }} />
-        <input
-          value={query} onChange={e => setQuery(e.target.value)}
-          placeholder="ค้นหางาน, รายละเอียด หรือแท็ก..."
-          aria-label="ค้นหางาน"
-          className="w-full rounded-xl outline-none transition-colors"
-          style={{ ...inputStyle, fontSize: "0.85rem", padding: "0.6rem 2.2rem 0.6rem 2.2rem" }}
-          onFocus={focusBorder} onBlur={blurBorder} />
-        {query && (
-          <button onClick={() => setQuery("")} aria-label="ล้างคำค้นหา"
-            className="absolute top-1/2 -translate-y-1/2 right-2 p-1 rounded-lg transition-colors" style={{ color: "var(--wt-muted)" }}
-            onMouseEnter={e => (e.currentTarget.style.background = "var(--wt-soft2)")}
-            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-            <X size={14} />
-          </button>
+      {/* Toolbar: search + filters */}
+      <div className="shrink-0 flex flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative" style={{ flex: "1 1 220px", maxWidth: 420 }}>
+            <Search size={15} className="absolute top-1/2 -translate-y-1/2 left-3" style={{ color: "var(--wt-muted)" }} />
+            <input
+              value={query} onChange={e => setQuery(e.target.value)}
+              placeholder="ค้นหางาน, รายละเอียด หรือแท็ก..."
+              aria-label="ค้นหางาน"
+              className="w-full rounded-xl outline-none transition-colors"
+              style={{ ...inputStyle, fontSize: "0.85rem", padding: "0.6rem 2.2rem 0.6rem 2.2rem" }}
+              onFocus={focusBorder} onBlur={blurBorder} />
+            {query && (
+              <button onClick={() => setQuery("")} aria-label="ล้างคำค้นหา"
+                className="absolute top-1/2 -translate-y-1/2 right-2 p-1 rounded-lg transition-colors" style={{ color: "var(--wt-muted)" }}
+                onMouseEnter={e => (e.currentTarget.style.background = "var(--wt-soft2)")}
+                onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5">
+            {(["high", "medium", "low"] as Priority[]).map(p => {
+              const cfg = PRIORITY_CONFIG[p];
+              const active = priFilter.includes(p);
+              return (
+                <button key={p} onClick={() => setPriFilter(f => toggle(f, p))} aria-pressed={active}
+                  className="flex items-center gap-1.5 rounded-xl transition-colors"
+                  style={{ padding: "0.4rem 0.6rem", background: active ? cfg.bg : "var(--wt-card)", color: active ? cfg.text : "var(--wt-muted)", border: `1px solid ${active ? cfg.dot : "var(--wt-border)"}`, fontSize: "0.76rem", fontWeight: 700 }}>
+                  <span className="w-2 h-2 rounded-full" style={{ background: cfg.dot }} /> {cfg.label}
+                </button>
+              );
+            })}
+          </div>
+          {filterActive && (
+            <button onClick={() => { setQuery(""); setPriFilter([]); setTagFilter([]); }}
+              className="rounded-xl transition-colors" style={{ padding: "0.4rem 0.7rem", fontSize: "0.76rem", fontWeight: 700, color: "#7c3aed", background: "var(--wt-soft2)" }}>
+              ล้างตัวกรอง
+            </button>
+          )}
+        </div>
+        {allTags.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {allTags.map(tag => {
+              const active = tagFilter.includes(tag);
+              const pal = tagPalette(tag);
+              return (
+                <button key={tag} onClick={() => setTagFilter(f => toggle(f, tag))} aria-pressed={active}
+                  className="rounded-full transition-all"
+                  style={{ padding: "0.2rem 0.7rem", background: active ? pal.bg : "var(--wt-card)", color: active ? pal.text : "var(--wt-muted)", border: `1px solid ${active ? pal.text + "55" : "var(--wt-border)"}`, fontSize: "0.72rem", fontWeight: 700 }}>
+                  #{tag}
+                </button>
+              );
+            })}
+          </div>
         )}
       </div>
 
@@ -380,7 +434,7 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask }: KanbanBoardP
                   <span style={{ fontSize: "0.85rem", fontWeight: 800, color: col.ink }}>{col.label}</span>
                   <span className="ml-auto inline-flex items-center justify-center rounded-full"
                     style={{ minWidth: 22, height: 22, padding: "0 7px", background: "var(--wt-card)", color: col.ink, fontSize: "0.72rem", fontWeight: 800 }}>
-                    {q ? `${colTasks.length}/${totalInCol}` : totalInCol}
+                    {filterActive ? `${colTasks.length}/${totalInCol}` : totalInCol}
                   </span>
                 </div>
 
@@ -389,8 +443,8 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask }: KanbanBoardP
                   {colTasks.length === 0 && (
                     <div className="flex flex-col items-center justify-center py-12 text-center" style={{ color: "var(--wt-muted)" }}>
                       <Sparkles size={26} className="mb-2" style={{ opacity: 0.5 }} />
-                      <p style={{ fontSize: "0.8rem", fontWeight: 700 }}>{q ? "ไม่พบงานที่ค้นหา" : "ยังไม่มีงาน"}</p>
-                      <p style={{ fontSize: "0.72rem", opacity: 0.75, marginTop: 2 }}>{q ? "ลองคำอื่น" : "กดปุ่มด้านล่างเพื่อเพิ่ม"}</p>
+                      <p style={{ fontSize: "0.8rem", fontWeight: 700 }}>{filterActive ? "ไม่พบงานที่ตรงกับตัวกรอง" : "ยังไม่มีงาน"}</p>
+                      <p style={{ fontSize: "0.72rem", opacity: 0.75, marginTop: 2 }}>{filterActive ? "ลองปรับตัวกรอง" : "กดปุ่มด้านล่างเพื่อเพิ่ม"}</p>
                     </div>
                   )}
                   {colTasks.map(task => (

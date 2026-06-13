@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, BarChart, Bar
@@ -52,12 +53,14 @@ function CustomTooltip({ active, payload, label, unitSuffix = "" }: CustomToolti
 }
 
 export function Reports({ logEntries, tasks }: ReportsProps) {
-  // Last 7 days
-  const last7 = Array.from({ length: 7 }, (_, i) => {
+  const [rangeDays, setRangeDays] = useState(7);
+
+  // Per-day series over the selected range (oldest -> newest)
+  const days = Array.from({ length: rangeDays }, (_, i) => {
     const d = new Date();
-    d.setDate(d.getDate() - (6 - i));
+    d.setDate(d.getDate() - (rangeDays - 1 - i));
     const dateStr = d.toISOString().split("T")[0];
-    const dayName = d.toLocaleDateString("th-TH", { weekday: "short" });
+    const dayName = d.toLocaleDateString("th-TH", rangeDays > 7 ? { day: "numeric", month: "short" } : { weekday: "short" });
     const hours = logEntries.filter(e => e.date === dateStr).reduce((s, e) => s + e.hours, 0);
     const done = logEntries.filter(e => e.date === dateStr && e.done).length;
     return { day: dayName, hours, done };
@@ -68,19 +71,51 @@ export function Reports({ logEntries, tasks }: ReportsProps) {
   logEntries.forEach(e => { catMap[e.category] = (catMap[e.category] || 0) + e.hours; });
   const categoryData = Object.entries(catMap).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
 
+  // Streak: consecutive days with >=1 entry, ending today (or yesterday as grace)
+  const entryDates = new Set(logEntries.map(e => e.date));
+  let streak = 0;
+  {
+    const d = new Date();
+    if (!entryDates.has(d.toISOString().split("T")[0])) d.setDate(d.getDate() - 1);
+    while (entryDates.has(d.toISOString().split("T")[0])) { streak++; d.setDate(d.getDate() - 1); }
+  }
+
   // Stats
   const totalHours = logEntries.reduce((s, e) => s + e.hours, 0);
   const doneEntries = logEntries.filter(e => e.done).length;
   const completionRate = logEntries.length > 0 ? Math.round((doneEntries / logEntries.length) * 100) : 0;
-  const avgHoursPerDay = (last7.reduce((s, d) => s + d.hours, 0) / 7).toFixed(1);
+  const avgHoursPerDay = (days.reduce((s, d) => s + d.hours, 0) / rangeDays).toFixed(1);
   const topCategory = categoryData[0]?.name ?? "-";
 
   const statValues: Record<string, string | number> = {
     hours: totalHours, completion: completionRate, avg: avgHoursPerDay, topcat: topCategory,
   };
 
+  const tickInterval = rangeDays > 7 ? Math.floor(rangeDays / 6) : 0;
+
   return (
     <div className="space-y-5">
+      {/* Range toggle + streak */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="inline-flex rounded-xl overflow-hidden" style={{ border: "1px solid var(--wt-border)" }}>
+          {[7, 30].map(n => {
+            const active = rangeDays === n;
+            return (
+              <button key={n} onClick={() => setRangeDays(n)} aria-pressed={active}
+                style={{ padding: "0.45rem 0.9rem", fontSize: "0.8rem", fontWeight: 800,
+                  background: active ? "linear-gradient(135deg, #7c3aed, #a855f7)" : "var(--wt-card)",
+                  color: active ? "#fff" : "var(--wt-muted)" }}>
+                {n} วัน
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex items-center gap-2 rounded-xl" style={{ padding: "0.45rem 0.8rem", background: "var(--wt-tint-orange)", border: "1px solid var(--wt-c-prog-line)" }}>
+          <span style={{ fontSize: "1rem" }}>🔥</span>
+          <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--wt-c-prog-ink)" }}>{streak} วันติด</span>
+        </div>
+      </div>
+
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {STAT_CARDS.map(s => (
@@ -102,18 +137,18 @@ export function Reports({ logEntries, tasks }: ReportsProps) {
               <TrendingUp size={14} style={{ color: "white" }} />
             </div>
             <div>
-              <p style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--wt-text)" }}>ชั่วโมงงาน 7 วันล่าสุด</p>
+              <p style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--wt-text)" }}>ชั่วโมงงาน {rangeDays} วันล่าสุด</p>
               <p style={{ fontSize: "0.72rem", color: "var(--wt-muted)" }}>บันทึกการทำงานรายวัน</p>
             </div>
           </div>
-          {last7.every(d => d.hours === 0) ? (
+          {days.every(d => d.hours === 0) ? (
             <div className="flex flex-col items-center justify-center h-44" style={{ color: "var(--wt-muted)" }}>
               <span style={{ fontSize: "2rem" }}>📊</span>
               <p style={{ fontSize: "0.85rem", fontWeight: 700, marginTop: 8 }}>ยังไม่มีข้อมูล</p>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={180}>
-              <AreaChart data={last7} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={days} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="hoursGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#7c3aed" stopOpacity={0.2} />
@@ -121,7 +156,7 @@ export function Reports({ logEntries, tasks }: ReportsProps) {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(124,58,237,0.12)" />
-                <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#9b8fb5", fontFamily: "Nunito" }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#9b8fb5", fontFamily: "Nunito" }} axisLine={false} tickLine={false} interval={tickInterval} />
                 <YAxis tick={{ fontSize: 11, fill: "#9b8fb5", fontFamily: "Nunito" }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip unitSuffix="ชม." />} />
                 <Area type="monotone" dataKey="hours" name="ชั่วโมง" stroke="#7c3aed" strokeWidth={3} fill="url(#hoursGrad)"
@@ -213,19 +248,19 @@ export function Reports({ logEntries, tasks }: ReportsProps) {
             </div>
             <div>
               <p style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--wt-text)" }}>งานสำเร็จรายวัน</p>
-              <p style={{ fontSize: "0.72rem", color: "var(--wt-muted)" }}>จำนวนงานที่เสร็จ 7 วัน</p>
+              <p style={{ fontSize: "0.72rem", color: "var(--wt-muted)" }}>จำนวนงานที่เสร็จ {rangeDays} วัน</p>
             </div>
           </div>
-          {last7.every(d => d.done === 0) ? (
+          {days.every(d => d.done === 0) ? (
             <div className="flex flex-col items-center justify-center h-44" style={{ color: "var(--wt-muted)" }}>
               <span style={{ fontSize: "2rem" }}>📊</span>
               <p style={{ fontSize: "0.85rem", fontWeight: 700, marginTop: 8 }}>ยังไม่มีข้อมูล</p>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={last7} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+              <BarChart data={days} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(124,58,237,0.12)" />
-                <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#9b8fb5", fontFamily: "Nunito" }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#9b8fb5", fontFamily: "Nunito" }} axisLine={false} tickLine={false} interval={tickInterval} />
                 <YAxis tick={{ fontSize: 11, fill: "#9b8fb5", fontFamily: "Nunito" }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip unitSuffix="งาน" />} />
                 <Bar dataKey="done" name="เสร็จ" radius={[8, 8, 0, 0]} fill="url(#doneGrad)" />
