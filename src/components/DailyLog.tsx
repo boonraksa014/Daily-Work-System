@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Plus, Trash2, Clock, ChevronLeft, ChevronRight, CheckCircle2, Circle, Pencil, Search, X } from "lucide-react";
 import { makeId } from "../lib/id";
 import type { Category } from "../types";
+import { DatePicker } from "./DatePicker";
 
 export interface LogEntry {
   id: string;
@@ -263,8 +264,6 @@ export function DailyLog({ entries, categories, onEntriesChange, onDeleteEntry }
     else onEntriesChange(entries.filter(e => e.id !== id));
   }
 
-  const rangeInputStyle: React.CSSProperties = { background: "rgba(255,255,255,0.2)", color: "white", fontSize: "0.78rem", border: "1px solid rgba(255,255,255,0.3)", colorScheme: "dark", padding: "0.35rem 0.6rem", borderRadius: 10, outline: "none" };
-
   function renderEntry(entry: LogEntry) {
     return editingId === entry.id ? (
       <EntryForm key={entry.id} date={entry.date} initial={entry} categories={categories}
@@ -318,17 +317,15 @@ export function DailyLog({ entries, categories, onEntriesChange, onDeleteEntry }
                     วันนี้
                   </button>
                 )}
-                <input type="date" aria-label="เลือกวันที่" value={selectedDate} onChange={e => setSelectedDate(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl outline-none"
-                  style={{ background: "rgba(255,255,255,0.2)", color: "white", fontSize: "0.78rem", border: "1px solid rgba(255,255,255,0.3)", colorScheme: "dark" }} />
+                <DatePicker tone="light" value={selectedDate} onChange={setSelectedDate} ariaLabel="เลือกวันที่" />
               </div>
             </div>
           ) : (
             <div className="flex items-center gap-2 flex-wrap">
               <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "white" }}>จาก</span>
-              <input type="date" aria-label="วันที่เริ่ม" value={rangeStart} max={rangeEnd} onChange={e => setRangeStart(e.target.value)} style={rangeInputStyle} />
+              <DatePicker tone="light" value={rangeStart} max={rangeEnd} onChange={setRangeStart} ariaLabel="วันที่เริ่ม" />
               <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "white" }}>ถึง</span>
-              <input type="date" aria-label="วันที่สิ้นสุด" value={rangeEnd} min={rangeStart} onChange={e => setRangeEnd(e.target.value)} style={rangeInputStyle} />
+              <DatePicker tone="light" value={rangeEnd} min={rangeStart} onChange={setRangeEnd} ariaLabel="วันที่สิ้นสุด" />
               <span style={{ fontSize: "0.74rem", color: "rgba(255,255,255,0.85)", marginLeft: 2 }}>· {baseEntries.length} รายการ</span>
             </div>
           )}

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Plus, MoreHorizontal, Clock, Trash2, X, Sparkles, Pencil, Search } from "lucide-react";
 import { makeId } from "../lib/id";
+import { DatePicker } from "./DatePicker";
 
 export type Priority = "low" | "medium" | "high";
 export type Status = "todo" | "inprogress" | "done";
@@ -158,10 +159,10 @@ function TaskModal({ status, initial, onSubmit, onClose }: TaskModalProps) {
               </div>
             </div>
             <div>
-              <label htmlFor="task-due" style={labelStyle}>กำหนดส่ง</label>
-              <input id="task-due" type="date" className="w-full mt-1 px-3 py-2.5 rounded-xl outline-none transition-colors"
-                style={{ ...inputStyle, fontSize: "0.85rem" }} onFocus={focusBorder} onBlur={blurBorder}
-                value={dueDate} onChange={e => setDueDate(e.target.value)} />
+              <label style={labelStyle}>กำหนดส่ง</label>
+              <div className="mt-1">
+                <DatePicker value={dueDate} onChange={setDueDate} clearable placeholder="ไม่กำหนด" ariaLabel="กำหนดส่ง" />
+              </div>
             </div>
           </div>
 
