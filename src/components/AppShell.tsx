@@ -44,7 +44,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {/* Logo */}
         <div className="px-5 pt-6 pb-5">
           <div className="flex items-center justify-between">
-            <Logo iconSize={38} />
+            <Logo iconSize={30} />
             <button onClick={() => setSidebarOpen(false)} aria-label="ปิดเมนู" className="lg:hidden p-1.5 rounded-xl" style={{ color: "var(--wt-muted)" }}>
               <X size={15} />
             </button>
