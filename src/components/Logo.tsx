@@ -8,9 +8,8 @@ export function Logo({ size = 36 }: { size?: number }) {
           <stop offset="1" stopColor="#ec4899" />
         </linearGradient>
       </defs>
-      <rect width="32" height="32" rx="9" fill="url(#wt-logo)" />
-      <path d="M8.5 16.5l4.8 4.8L23.5 10.8" stroke="#ffffff" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx="23.5" cy="10.8" r="1.7" fill="#ffffff" />
+      <rect width="32" height="32" rx="10" fill="url(#wt-logo)" />
+      <path d="M9 16.6l4.6 4.6L23 10.8" stroke="#ffffff" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
