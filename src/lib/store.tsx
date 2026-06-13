@@ -49,7 +49,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useLocalStorage<Task[]>("worktrack.tasks", INITIAL_TASKS);
   const [logEntries, setLogEntries] = useLocalStorage<LogEntry[]>("worktrack.logs", INITIAL_LOGS);
   const [categories, setCategories] = useLocalStorage<Category[]>("worktrack.categories", INITIAL_CATEGORIES);
-  const [settings, setSettings] = useLocalStorage<AppSettings>("worktrack.settings", INITIAL_SETTINGS);
+  const [settingsRaw, setSettings] = useLocalStorage<AppSettings>("worktrack.settings", INITIAL_SETTINGS);
+  const settings = { ...INITIAL_SETTINGS, ...settingsRaw }; // backfill fields added later
   const [mounted, setMounted] = useState(false);
   const [toast, setToast] = useState<{ message: string; onUndo: () => void } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -103,7 +104,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }
 
   function updateSettings(patch: Partial<AppSettings>) {
-    setSettings(prev => ({ ...prev, ...patch }));
+    setSettings(prev => ({ ...INITIAL_SETTINGS, ...prev, ...patch }));
   }
 
   function exportData(): BackupData {

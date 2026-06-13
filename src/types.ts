@@ -9,8 +9,10 @@ export interface Category {
   color: string; // hex ใช้เป็นสี accent (dot/กราฟ) และ tint พื้นชิป
 }
 
-/** ค่าตั้งค่าทั่วไปของแอป (ตั้งค่า → ทั่วไป) */
+/** ค่าตั้งค่าทั่วไป + โปรไฟล์ผู้ใช้ */
 export interface AppSettings {
   displayName: string;
+  role: string;
+  avatarColor: string;
   defaultView: View;
 }

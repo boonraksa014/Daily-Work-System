@@ -334,9 +334,9 @@ export function DailyLog({ entries, categories, onEntriesChange, onDeleteEntry }
         {/* Stats */}
         <div className="grid grid-cols-3 divide-x" style={{ borderTop: "1px solid var(--wt-border)" }}>
           {[
-            { label: mode === "day" ? "รายการทั้งหมด" : "รายการในช่วง", value: baseEntries.length, emoji: "📋", color: "#7c3aed" },
+            { label: mode === "day" ? "งานทั้งหมด" : "รายการในช่วง", value: baseEntries.length, emoji: "📋", color: "#7c3aed" },
             { label: "เสร็จแล้ว",    value: doneCount,   emoji: "✅", color: "#34d399" },
-            { label: "ชั่วโมงงาน",   value: totalHours,  emoji: "⏱️", color: "#fb923c" },
+            { label: "ชั่วโมงในการทำงาน",   value: totalHours,  emoji: "⏱️", color: "#fb923c" },
           ].map(s => (
             <div key={s.label} className="flex flex-col items-center py-4 px-3">
               <span style={{ fontSize: "1.3rem" }}>{s.emoji}</span>
@@ -439,7 +439,7 @@ export function DailyLog({ entries, categories, onEntriesChange, onDeleteEntry }
           }}
           onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 10px 28px rgba(124,58,237,0.45)")}
           onMouseLeave={e => (e.currentTarget.style.boxShadow = "0 6px 20px rgba(124,58,237,0.35)")}>
-          <Plus size={18} /> เพิ่มรายการงาน
+          <Plus size={18} /> เพิ่มงาน
         </button>
       )}
     </div>

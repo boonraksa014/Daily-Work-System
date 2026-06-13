@@ -19,6 +19,7 @@ const NAV_ITEMS = [
 ];
 
 const SETTINGS_ITEMS = [
+  { href: "/settings/profile",    label: "โปรไฟล์",  emoji: "👤" },
   { href: "/settings/general",    label: "ทั่วไป",   emoji: "🎛️" },
   { href: "/settings/categories", label: "หมวดหมู่", emoji: "🏷️" },
   { href: "/settings/tags",       label: "แท็ก",     emoji: "🔖" },
@@ -171,9 +172,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {new Date().toLocaleDateString("th-TH", { day: "numeric", month: "short" })}
               </span>
             </div>
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, #7c3aed, #ec4899)" }} title={settings.displayName}>
+            <Link href="/settings/profile" aria-label="โปรไฟล์" title={settings.displayName}
+              className="w-8 h-8 rounded-xl flex items-center justify-center transition-transform"
+              style={{ background: settings.avatarColor }}
+              onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.08)")}
+              onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}>
               <span style={{ fontSize: "0.82rem", fontWeight: 900, color: "white" }}>{(settings.displayName.trim()[0] ?? "?").toUpperCase()}</span>
-            </div>
+            </Link>
           </div>
         </header>
 

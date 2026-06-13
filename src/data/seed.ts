@@ -4,6 +4,8 @@ import type { Category, AppSettings } from "../types";
 
 export const INITIAL_SETTINGS: AppSettings = {
   displayName: "ผู้ใช้",
+  role: "",
+  avatarColor: "#7c3aed",
   defaultView: "dashboard",
 };
 

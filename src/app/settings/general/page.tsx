@@ -35,20 +35,9 @@ export default function GeneralSettingsPage() {
     <div className="mx-auto" style={{ maxWidth: 720 }}>
       <div className="bg-white rounded-2xl p-5" style={{ border: "2px solid var(--wt-border)", boxShadow: "0 4px 16px rgba(124,58,237,0.08)" }}>
         <h2 style={{ fontSize: "1.05rem", fontWeight: 800, color: "var(--wt-text)" }}>ทั่วไป</h2>
-        <p style={{ fontSize: "0.78rem", color: "var(--wt-muted)" }}>ปรับแต่งชื่อ ธีม และหน้าเริ่มต้น</p>
+        <p style={{ fontSize: "0.78rem", color: "var(--wt-muted)" }}>ปรับแต่งธีมและหน้าเริ่มต้น</p>
 
         <div className="space-y-2.5 mt-4">
-        <Field label="ชื่อที่แสดง" hint="ใช้แสดงในแถบหัว (ตัวอักษรแรกเป็นไอคอนโปรไฟล์)">
-          <input
-            value={settings.displayName}
-            onChange={e => updateSettings({ displayName: e.target.value })}
-            placeholder="ชื่อของคุณ"
-            className="w-full px-4 py-2.5 rounded-xl outline-none transition-colors"
-            style={{ border: "2px solid var(--wt-border)", background: "var(--wt-soft)", color: "var(--wt-text)", fontFamily: "inherit", fontSize: "0.9rem", maxWidth: 320 }}
-            onFocus={e => (e.target.style.borderColor = "#a78bfa")}
-            onBlur={e => (e.target.style.borderColor = "var(--wt-border)")} />
-        </Field>
-
         <Field label="ธีม" hint="โหมดสีของแอป">
           <div className="inline-flex rounded-xl overflow-hidden flex-wrap" style={{ border: "1px solid var(--wt-border)" }}>
             {THEMES.map(t => {
