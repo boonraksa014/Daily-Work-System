@@ -83,7 +83,7 @@ export function DatePicker({ value, onChange, min, max, tone = "default", placeh
           <div className="fixed inset-0" style={{ zIndex: 90 }} onClick={() => setOpen(false)} />
           <div role="dialog" aria-label="ปฏิทิน"
             className="fixed rounded-2xl p-3"
-            style={{ top: pos.y, left: pos.x, width: CAL_WIDTH, zIndex: 91, background: "var(--wt-card)", border: "1px solid var(--wt-border)", boxShadow: "0 14px 36px rgba(76,29,149,0.22)" }}>
+            style={{ top: pos.y, left: pos.x, width: CAL_WIDTH, zIndex: 91, background: "var(--wt-card)", border: "1px solid var(--wt-border)", boxShadow: "0 14px 36px rgba(76,29,149,0.22)", transformOrigin: "top", animation: "wt-pop-in 0.14s cubic-bezier(0.22,1,0.36,1)" }}>
             {/* Month nav */}
             <div className="flex items-center justify-between mb-2">
               <button type="button" onClick={() => setView(v => v.m === 0 ? { y: v.y - 1, m: 11 } : { y: v.y, m: v.m - 1 })}

@@ -19,10 +19,10 @@ const THEMES: { value: string; label: string; emoji: string }[] = [
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
-    <div className="py-4" style={{ borderTop: "1px solid var(--wt-border)" }}>
+    <div className="rounded-2xl p-4" style={{ border: "1px solid var(--wt-border)", background: "var(--wt-card)" }}>
       <p style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--wt-text)" }}>{label}</p>
-      {hint && <p style={{ fontSize: "0.74rem", color: "var(--wt-muted)", marginTop: 1, marginBottom: 8 }}>{hint}</p>}
-      <div className={hint ? "" : "mt-2"}>{children}</div>
+      {hint && <p style={{ fontSize: "0.74rem", color: "var(--wt-muted)", marginTop: 1 }}>{hint}</p>}
+      <div className="mt-3">{children}</div>
     </div>
   );
 }
@@ -37,6 +37,7 @@ export default function GeneralSettingsPage() {
         <h2 style={{ fontSize: "1.05rem", fontWeight: 800, color: "var(--wt-text)" }}>ทั่วไป</h2>
         <p style={{ fontSize: "0.78rem", color: "var(--wt-muted)" }}>ปรับแต่งชื่อ ธีม และหน้าเริ่มต้น</p>
 
+        <div className="space-y-2.5 mt-4">
         <Field label="ชื่อที่แสดง" hint="ใช้แสดงในแถบหัว (ตัวอักษรแรกเป็นไอคอนโปรไฟล์)">
           <input
             value={settings.displayName}
@@ -82,6 +83,7 @@ export default function GeneralSettingsPage() {
             })}
           </div>
         </Field>
+        </div>
       </div>
     </div>
   );

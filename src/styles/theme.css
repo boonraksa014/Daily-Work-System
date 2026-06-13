@@ -181,6 +181,12 @@
   background-color: var(--wt-card);
 }
 
+/* Popover entrance (datepicker, menus). Honors reduced-motion via the block below. */
+@keyframes wt-pop-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+
 /* Keyboard focus ring, app-wide. Mouse clicks don't trigger it. */
 :where(button, a, input, textarea, select, [role="menuitem"], [tabindex]):focus-visible {
   outline: 2px solid var(--wt-focus);
