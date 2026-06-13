@@ -131,7 +131,7 @@
   --wt-soft2: #f5f3ff;
   --wt-border: #ede9fe;
   --wt-text: #2d1f6e;
-  --wt-muted: #7c6a9e;
+  --wt-muted: #6b5c88; /* darkened from #7c6a9e for >4.5:1 on white/soft surfaces */
   --wt-stripe: #fdf8ff;
   --wt-tint-blue: #f0f9ff;
   --wt-tint-orange: #fff7ed;
