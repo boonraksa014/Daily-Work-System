@@ -216,19 +216,35 @@ interface DailyLogProps {
   onDeleteEntry?: (id: string) => void;
 }
 
+type LogMode = "day" | "range";
+
 export function DailyLog({ entries, categories, onEntriesChange, onDeleteEntry }: DailyLogProps) {
+  const [mode, setMode] = useState<LogMode>("day");
   const [selectedDate, setSelectedDate] = useState(todayStr());
+  const [rangeStart, setRangeStart] = useState(offsetDate(todayStr(), -6));
+  const [rangeEnd, setRangeEnd] = useState(todayStr());
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
 
-  const dayEntries = entries.filter(e => e.date === selectedDate);
-  const totalHours = dayEntries.reduce((s, e) => s + e.hours, 0);
-  const doneCount = dayEntries.filter(e => e.done).length;
-  const completionPct = dayEntries.length > 0 ? Math.round((doneCount / dayEntries.length) * 100) : 0;
-
   const q = query.trim().toLowerCase();
-  const visibleEntries = dayEntries.filter(e => !q || e.title.toLowerCase().includes(q) || (e.note?.toLowerCase().includes(q) ?? false) || e.category.toLowerCase().includes(q));
+  const matchSearch = (e: LogEntry) => !q || e.title.toLowerCase().includes(q) || (e.note?.toLowerCase().includes(q) ?? false) || e.category.toLowerCase().includes(q);
+
+  // normalize range so start <= end
+  const [rs, re] = rangeStart <= rangeEnd ? [rangeStart, rangeEnd] : [rangeEnd, rangeStart];
+
+  const baseEntries = mode === "day"
+    ? entries.filter(e => e.date === selectedDate)
+    : entries.filter(e => e.date >= rs && e.date <= re);
+
+  const totalHours = baseEntries.reduce((s, e) => s + e.hours, 0);
+  const doneCount = baseEntries.filter(e => e.done).length;
+  const completionPct = baseEntries.length > 0 ? Math.round((doneCount / baseEntries.length) * 100) : 0;
+
+  const visibleEntries = baseEntries.filter(matchSearch);
+  // range: newest day first, grouped by date
+  const visibleSorted = mode === "range" ? [...visibleEntries].sort((a, b) => b.date.localeCompare(a.date)) : visibleEntries;
+  const groupDates = mode === "range" ? Array.from(new Set(visibleSorted.map(e => e.date))) : [];
 
   const isToday = selectedDate === todayStr();
   const isPast = selectedDate < todayStr();
@@ -237,67 +253,93 @@ export function DailyLog({ entries, categories, onEntriesChange, onDeleteEntry }
     onEntriesChange([...entries, { ...data, id: makeId("log") }]);
     setShowAdd(false);
   }
-
   function updateEntry(id: string, data: Omit<LogEntry, "id">) {
     onEntriesChange(entries.map(e => e.id === id ? { ...e, ...data } : e));
     setEditingId(null);
   }
-
   function toggleEntry(id: string) { onEntriesChange(entries.map(e => e.id === id ? { ...e, done: !e.done } : e)); }
   function deleteEntry(id: string) {
     if (onDeleteEntry) onDeleteEntry(id);
     else onEntriesChange(entries.filter(e => e.id !== id));
   }
 
+  const rangeInputStyle: React.CSSProperties = { background: "rgba(255,255,255,0.2)", color: "white", fontSize: "0.78rem", border: "1px solid rgba(255,255,255,0.3)", colorScheme: "dark", padding: "0.35rem 0.6rem", borderRadius: 10, outline: "none" };
+
+  function renderEntry(entry: LogEntry) {
+    return editingId === entry.id ? (
+      <EntryForm key={entry.id} date={entry.date} initial={entry} categories={categories}
+        onSubmit={data => updateEntry(entry.id, data)} onCancel={() => setEditingId(null)} />
+    ) : (
+      <EntryCard key={entry.id} entry={entry} categories={categories} onToggle={toggleEntry} onDelete={deleteEntry} onEdit={setEditingId} />
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4 h-full">
-      {/* Date nav */}
+      {/* Header card */}
       <div className="bg-white rounded-2xl overflow-hidden" style={{ border: "2px solid var(--wt-border)", boxShadow: "0 4px 16px rgba(124,58,237,0.1)" }}>
-        {/* Header gradient */}
         <div className="px-5 py-4" style={{ background: "linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #ec4899 100%)" }}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button onClick={() => setSelectedDate(offsetDate(selectedDate, -1))} aria-label="วันก่อนหน้า"
-                className="p-2 rounded-xl transition hover:bg-white/20" style={{ color: "white" }}>
-                <ChevronLeft size={18} />
-              </button>
-              <div>
-                <p style={{ fontSize: "1rem", fontWeight: 800, color: "white" }}>
-                  {isToday ? "📅 วันนี้" : (isPast ? "📂 " : "📅 ") + weekdayThai(selectedDate)}
-                </p>
-                <p style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.8)" }}>{formatDateThai(selectedDate)}</p>
-              </div>
-              <button onClick={() => setSelectedDate(offsetDate(selectedDate, 1))} aria-label="วันถัดไป"
-                className="p-2 rounded-xl transition hover:bg-white/20" style={{ color: "white" }}>
-                <ChevronRight size={18} />
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
-              {!isToday && (
-                <button onClick={() => setSelectedDate(todayStr())}
-                  className="px-3 py-1.5 rounded-xl transition"
-                  style={{ background: "rgba(255,255,255,0.25)", color: "white", fontSize: "0.78rem", fontWeight: 700, border: "1px solid rgba(255,255,255,0.3)" }}>
-                  วันนี้
+          {/* Mode toggle */}
+          <div className="inline-flex rounded-xl overflow-hidden mb-3" style={{ border: "1px solid rgba(255,255,255,0.35)" }}>
+            {([["day", "📅 รายวัน"], ["range", "🗓️ ช่วงวันที่"]] as [LogMode, string][]).map(([m, label]) => {
+              const active = mode === m;
+              return (
+                <button key={m} onClick={() => { setMode(m); setShowAdd(false); setEditingId(null); }} aria-pressed={active}
+                  style={{ padding: "0.35rem 0.85rem", fontSize: "0.78rem", fontWeight: 800, color: active ? "#7c3aed" : "white", background: active ? "white" : "transparent" }}>
+                  {label}
                 </button>
-              )}
-              <input
-                type="date"
-                aria-label="เลือกวันที่"
-                className="px-3 py-1.5 rounded-xl outline-none"
-                style={{ background: "rgba(255,255,255,0.2)", color: "white", fontSize: "0.78rem", border: "1px solid rgba(255,255,255,0.3)", colorScheme: "dark" }}
-                value={selectedDate}
-                onChange={e => setSelectedDate(e.target.value)}
-              />
-            </div>
+              );
+            })}
           </div>
+
+          {mode === "day" ? (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <button onClick={() => setSelectedDate(offsetDate(selectedDate, -1))} aria-label="วันก่อนหน้า"
+                  className="p-2 rounded-xl transition hover:bg-white/20" style={{ color: "white" }}>
+                  <ChevronLeft size={18} />
+                </button>
+                <div>
+                  <p style={{ fontSize: "1rem", fontWeight: 800, color: "white" }}>
+                    {isToday ? "📅 วันนี้" : (isPast ? "📂 " : "📅 ") + weekdayThai(selectedDate)}
+                  </p>
+                  <p style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.8)" }}>{formatDateThai(selectedDate)}</p>
+                </div>
+                <button onClick={() => setSelectedDate(offsetDate(selectedDate, 1))} aria-label="วันถัดไป"
+                  className="p-2 rounded-xl transition hover:bg-white/20" style={{ color: "white" }}>
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                {!isToday && (
+                  <button onClick={() => setSelectedDate(todayStr())}
+                    className="px-3 py-1.5 rounded-xl transition"
+                    style={{ background: "rgba(255,255,255,0.25)", color: "white", fontSize: "0.78rem", fontWeight: 700, border: "1px solid rgba(255,255,255,0.3)" }}>
+                    วันนี้
+                  </button>
+                )}
+                <input type="date" aria-label="เลือกวันที่" value={selectedDate} onChange={e => setSelectedDate(e.target.value)}
+                  className="px-3 py-1.5 rounded-xl outline-none"
+                  style={{ background: "rgba(255,255,255,0.2)", color: "white", fontSize: "0.78rem", border: "1px solid rgba(255,255,255,0.3)", colorScheme: "dark" }} />
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "white" }}>จาก</span>
+              <input type="date" aria-label="วันที่เริ่ม" value={rangeStart} max={rangeEnd} onChange={e => setRangeStart(e.target.value)} style={rangeInputStyle} />
+              <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "white" }}>ถึง</span>
+              <input type="date" aria-label="วันที่สิ้นสุด" value={rangeEnd} min={rangeStart} onChange={e => setRangeEnd(e.target.value)} style={rangeInputStyle} />
+              <span style={{ fontSize: "0.74rem", color: "rgba(255,255,255,0.85)", marginLeft: 2 }}>· {baseEntries.length} รายการ</span>
+            </div>
+          )}
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-3 divide-x" style={{ borderTop: "1px solid var(--wt-border)" }}>
           {[
-            { label: "รายการทั้งหมด", value: dayEntries.length, emoji: "📋", color: "#7c3aed" },
-            { label: "เสร็จแล้ว",    value: doneCount,          emoji: "✅", color: "#34d399" },
-            { label: "ชั่วโมงงาน",   value: totalHours,         emoji: "⏱️", color: "#fb923c" },
+            { label: mode === "day" ? "รายการทั้งหมด" : "รายการในช่วง", value: baseEntries.length, emoji: "📋", color: "#7c3aed" },
+            { label: "เสร็จแล้ว",    value: doneCount,   emoji: "✅", color: "#34d399" },
+            { label: "ชั่วโมงงาน",   value: totalHours,  emoji: "⏱️", color: "#fb923c" },
           ].map(s => (
             <div key={s.label} className="flex flex-col items-center py-4 px-3">
               <span style={{ fontSize: "1.3rem" }}>{s.emoji}</span>
@@ -308,7 +350,7 @@ export function DailyLog({ entries, categories, onEntriesChange, onDeleteEntry }
         </div>
 
         {/* Progress bar */}
-        {dayEntries.length > 0 && (
+        {baseEntries.length > 0 && (
           <div className="px-5 pb-4">
             <div className="flex items-center justify-between mb-1.5">
               <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--wt-muted)" }}>ความคืบหน้า</span>
@@ -322,13 +364,13 @@ export function DailyLog({ entries, categories, onEntriesChange, onDeleteEntry }
         )}
       </div>
 
-      {/* Search (only when the day has entries) */}
-      {dayEntries.length > 0 && (
+      {/* Search */}
+      {baseEntries.length > 0 && (
         <div className="relative shrink-0">
           <Search size={15} className="absolute top-1/2 -translate-y-1/2 left-3" style={{ color: "var(--wt-muted)" }} />
           <input
             value={query} onChange={e => setQuery(e.target.value)}
-            placeholder="ค้นหารายการในวันนี้..."
+            placeholder={mode === "day" ? "ค้นหารายการในวันนี้..." : "ค้นหาในช่วงที่เลือก..."}
             aria-label="ค้นหารายการ"
             className="w-full rounded-xl outline-none transition-colors"
             style={{ border: "2px solid var(--wt-border)", background: "var(--wt-soft)", color: "var(--wt-text)", fontFamily: "inherit", fontSize: "0.85rem", padding: "0.6rem 2.2rem" }}
@@ -347,37 +389,50 @@ export function DailyLog({ entries, categories, onEntriesChange, onDeleteEntry }
 
       {/* Entries */}
       <div className="flex-1 overflow-y-auto space-y-2.5" style={{ scrollbarWidth: "none" }}>
-        {dayEntries.length === 0 && !showAdd && (
+        {baseEntries.length === 0 && !showAdd && (
           <div className="flex flex-col items-center justify-center py-16" style={{ color: "var(--wt-muted)" }}>
             <div className="w-20 h-20 rounded-full flex items-center justify-center mb-4" style={{ background: "var(--wt-border)" }}>
               <Pencil size={32} style={{ color: "#a78bfa" }} />
             </div>
-            <p style={{ fontSize: "1rem", fontWeight: 800, color: "var(--wt-text)" }}>ยังไม่มีรายการงาน</p>
-            <p style={{ fontSize: "0.82rem", color: "var(--wt-muted)", marginTop: 4 }}>เริ่มบันทึกงานที่ทำวันนี้กันเลย!</p>
+            <p style={{ fontSize: "1rem", fontWeight: 800, color: "var(--wt-text)" }}>{mode === "day" ? "ยังไม่มีรายการงาน" : "ไม่มีรายการในช่วงนี้"}</p>
+            <p style={{ fontSize: "0.82rem", color: "var(--wt-muted)", marginTop: 4 }}>{mode === "day" ? "เริ่มบันทึกงานที่ทำวันนี้กันเลย!" : "ลองเลือกช่วงวันอื่น"}</p>
           </div>
         )}
-        {dayEntries.length > 0 && visibleEntries.length === 0 && (
+        {baseEntries.length > 0 && visibleEntries.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12" style={{ color: "var(--wt-muted)" }}>
             <Search size={28} style={{ opacity: 0.5 }} />
             <p style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--wt-text)", marginTop: 8 }}>ไม่พบรายการที่ค้นหา</p>
             <p style={{ fontSize: "0.78rem", marginTop: 2 }}>ลองคำอื่นดู</p>
           </div>
         )}
-        {visibleEntries.map(entry => (
-          editingId === entry.id ? (
-            <EntryForm key={entry.id} date={entry.date} initial={entry} categories={categories}
-              onSubmit={data => updateEntry(entry.id, data)} onCancel={() => setEditingId(null)} />
-          ) : (
-            <EntryCard key={entry.id} entry={entry} categories={categories} onToggle={toggleEntry} onDelete={deleteEntry} onEdit={setEditingId} />
-          )
-        ))}
-        {showAdd && (
+
+        {/* Day mode: flat list */}
+        {mode === "day" && visibleEntries.map(renderEntry)}
+
+        {/* Range mode: grouped by date (newest first) */}
+        {mode === "range" && groupDates.map(date => {
+          const items = visibleSorted.filter(e => e.date === date);
+          const dayHours = items.reduce((s, e) => s + e.hours, 0);
+          return (
+            <div key={date} className="space-y-2.5">
+              <div className="flex items-center gap-2 pt-1">
+                <span style={{ fontSize: "0.8rem", fontWeight: 800, color: "var(--wt-text)" }}>{weekdayThai(date)}</span>
+                <span style={{ fontSize: "0.72rem", color: "var(--wt-muted)" }}>{date} · {items.length} รายการ · {dayHours} ชม.</span>
+                <div className="flex-1 h-px" style={{ background: "var(--wt-border)" }} />
+              </div>
+              {items.map(renderEntry)}
+            </div>
+          );
+        })}
+
+        {/* Add form (day mode only) */}
+        {showAdd && mode === "day" && (
           <EntryForm onSubmit={addEntry} onCancel={() => setShowAdd(false)} date={selectedDate} categories={categories} />
         )}
       </div>
 
-      {/* Add button */}
-      {!showAdd && (
+      {/* Add button (day mode only) */}
+      {mode === "day" && !showAdd && (
         <button onClick={() => { setShowAdd(true); setEditingId(null); }}
           className="flex items-center justify-center gap-2 py-4 rounded-2xl transition-all"
           style={{
