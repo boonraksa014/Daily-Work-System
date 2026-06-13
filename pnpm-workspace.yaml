@@ -1,11 +1,6 @@
 packages:
   - '.'
 
-# pin vite (เดิมอยู่ใน package.json > pnpm.overrides ซึ่ง pnpm v10 ไม่อ่านแล้ว)
-overrides:
-  vite: 6.3.5
-
-# อนุญาตให้ native deps รัน build script ได้ (จำเป็นต่อ vite/tailwind)
+# อนุญาตให้ native deps รัน build script ได้ (จำเป็นต่อ tailwind oxide)
 onlyBuiltDependencies:
-  - esbuild
   - '@tailwindcss/oxide'

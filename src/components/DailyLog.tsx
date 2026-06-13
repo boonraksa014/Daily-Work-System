@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { Plus, Trash2, Clock, Calendar, ChevronLeft, ChevronRight, CheckCircle2, Circle, Pencil } from "lucide-react";
 import { makeId } from "../lib/id";

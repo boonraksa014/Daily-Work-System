@@ -1,7 +1,9 @@
+"use client";
+
 import { BookOpen, Zap, Target } from "lucide-react";
-import type { Task } from "../components/KanbanBoard";
-import type { LogEntry } from "../components/DailyLog";
-import type { View } from "../types";
+import type { Task } from "@/components/KanbanBoard";
+import type { LogEntry } from "@/components/DailyLog";
+import type { View } from "@/types";
 
 function greeting() {
   const h = new Date().getHours();
@@ -10,13 +12,13 @@ function greeting() {
   return { text: "สวัสดีตอนเย็น", emoji: "🌙" };
 }
 
-interface DashboardPageProps {
+interface DashboardViewProps {
   tasks: Task[];
   logEntries: LogEntry[];
   onNavigate: (v: View) => void;
 }
 
-export function DashboardPage({ tasks, logEntries, onNavigate }: DashboardPageProps) {
+export function DashboardView({ tasks, logEntries, onNavigate }: DashboardViewProps) {
   const today = new Date().toISOString().split("T")[0];
   const todayLogs = logEntries.filter(e => e.date === today);
   const todayHours = todayLogs.reduce((s, e) => s + e.hours, 0);

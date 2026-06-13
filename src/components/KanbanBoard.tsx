@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import { Plus, MoreHorizontal, Clock, Trash2, X, Sparkles } from "lucide-react";
 import { makeId } from "../lib/id";
