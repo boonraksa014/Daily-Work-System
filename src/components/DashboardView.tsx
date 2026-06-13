@@ -28,10 +28,10 @@ export function DashboardView({ tasks, logEntries, onNavigate }: DashboardViewPr
   const greet = greeting();
 
   const QUICK_STATS = [
-    { emoji: "📋", label: "งานวันนี้",      value: todayLogs.length,  unit: "รายการ", gradient: "linear-gradient(135deg, #7c3aed, #a855f7)", shadow: "rgba(124,58,237,0.25)", nav: "log" as View },
-    { emoji: "✅", label: "เสร็จแล้ววันนี้", value: todayDone,         unit: "รายการ", gradient: "linear-gradient(135deg, #059669, #34d399)", shadow: "rgba(52,211,153,0.25)", nav: "log" as View },
-    { emoji: "⏱️", label: "ชม. วันนี้",    value: todayHours,        unit: "ชม.",   gradient: "linear-gradient(135deg, #d97706, #fbbf24)", shadow: "rgba(251,191,36,0.25)",  nav: "log" as View },
-    { emoji: "⚡", label: "กำลังดำเนินการ", value: inProgress,        unit: "งาน",   gradient: "linear-gradient(135deg, #0369a1, #38bdf8)", shadow: "rgba(56,189,248,0.25)", nav: "kanban" as View },
+    { emoji: "📋", label: "งานวันนี้",      value: todayLogs.length, unit: "รายการ", accent: "#7c3aed", chip: "#ede9fe", nav: "log" as View },
+    { emoji: "✅", label: "เสร็จแล้ววันนี้", value: todayDone,         unit: "รายการ", accent: "#059669", chip: "#d1fae5", nav: "log" as View },
+    { emoji: "⏱️", label: "ชม. วันนี้",    value: todayHours,        unit: "ชม.",   accent: "#d97706", chip: "#fef3c7", nav: "log" as View },
+    { emoji: "⚡", label: "กำลังดำเนินการ", value: inProgress,        unit: "งาน",   accent: "#0369a1", chip: "#e0f2fe", nav: "kanban" as View },
   ];
 
   return (
@@ -60,7 +60,7 @@ export function DashboardView({ tasks, logEntries, onNavigate }: DashboardViewPr
           {/* Mini progress */}
           <div className="mt-5 flex items-center gap-3">
             <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.2)" }}>
-              <div className="h-full rounded-full" style={{ width: `${tasks.length > 0 ? (doneTasks / tasks.length) * 100 : 0}%`, background: "rgba(255,255,255,0.9)", transition: "width 0.8s ease" }} />
+              <div className="h-full w-full rounded-full" style={{ transform: `scaleX(${tasks.length > 0 ? doneTasks / tasks.length : 0})`, transformOrigin: "left", background: "rgba(255,255,255,0.9)", transition: "transform 0.8s cubic-bezier(0.22,1,0.36,1)" }} />
             </div>
             <span style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.9)", fontWeight: 800, whiteSpace: "nowrap" }}>
               {doneTasks}/{tasks.length} งาน
@@ -73,13 +73,13 @@ export function DashboardView({ tasks, logEntries, onNavigate }: DashboardViewPr
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {QUICK_STATS.map(s => (
           <button key={s.label} onClick={() => onNavigate(s.nav)}
-            className="text-left rounded-2xl p-4 text-white transition-all"
-            style={{ background: s.gradient, boxShadow: `0 6px 20px ${s.shadow}` }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-3px)"; (e.currentTarget as HTMLElement).style.boxShadow = `0 12px 30px ${s.shadow}`; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLElement).style.boxShadow = `0 6px 20px ${s.shadow}`; }}>
-            <span style={{ fontSize: "1.6rem" }}>{s.emoji}</span>
-            <p style={{ fontSize: "2rem", fontWeight: 900, lineHeight: 1.1, marginTop: 4 }}>{s.value}</p>
-            <p style={{ fontSize: "0.72rem", opacity: 0.85, fontWeight: 600, marginTop: 2 }}>{s.label} · {s.unit}</p>
+            className="text-left rounded-2xl p-4 bg-white transition-all"
+            style={{ border: "1px solid var(--wt-border)", boxShadow: "0 1px 3px rgba(76,29,149,0.06)" }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-3px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 10px 24px rgba(76,29,149,0.12)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 1px 3px rgba(76,29,149,0.06)"; }}>
+            <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl" style={{ background: s.chip, fontSize: "1rem" }}>{s.emoji}</span>
+            <p style={{ fontSize: "1.9rem", fontWeight: 800, lineHeight: 1.1, marginTop: 8, color: s.accent }}>{s.value}</p>
+            <p style={{ fontSize: "0.72rem", color: "var(--wt-muted)", fontWeight: 600, marginTop: 2 }}>{s.label} · {s.unit}</p>
           </button>
         ))}
       </div>
