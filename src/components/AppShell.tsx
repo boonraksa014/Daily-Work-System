@@ -6,9 +6,10 @@ import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
   LayoutDashboard, Kanban, BookOpen, BarChart3,
-  Sun, Moon, Menu, X, Sparkles
+  Sun, Moon, Menu, X
 } from "lucide-react";
 import { useData } from "@/lib/store";
+import { Logo } from "@/components/Logo";
 
 const NAV_ITEMS = [
   { href: "/",        label: "ภาพรวม",       emoji: "🏠", icon: <LayoutDashboard size={17} />, gradient: "linear-gradient(135deg, #7c3aed, #a855f7)" },
@@ -44,8 +45,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="px-5 pt-6 pb-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-2xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, #7c3aed, #ec4899)", boxShadow: "0 4px 12px rgba(124,58,237,0.4)" }}>
-                <Sparkles size={17} style={{ color: "white" }} />
+              <div style={{ borderRadius: 11, boxShadow: "0 4px 12px rgba(124,58,237,0.4)", lineHeight: 0 }}>
+                <Logo size={36} />
               </div>
               <div>
                 <p style={{ fontSize: "0.95rem", fontWeight: 900, color: "var(--wt-text)" }}>WorkTrack</p>
