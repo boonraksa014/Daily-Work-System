@@ -44,15 +44,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {/* Logo */}
         <div className="px-5 pt-6 pb-5">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div style={{ borderRadius: 11, boxShadow: "0 4px 12px rgba(124,58,237,0.4)", lineHeight: 0 }}>
-                <Logo size={36} />
-              </div>
-              <div>
-                <p style={{ fontSize: "0.95rem", fontWeight: 900, color: "var(--wt-text)" }}>WorkTrack</p>
-                <p style={{ fontSize: "0.6rem", color: "var(--wt-muted)", fontWeight: 600 }}>Daily Work Log</p>
-              </div>
-            </div>
+            <Logo iconSize={38} />
             <button onClick={() => setSidebarOpen(false)} aria-label="ปิดเมนู" className="lg:hidden p-1.5 rounded-xl" style={{ color: "var(--wt-muted)" }}>
               <X size={15} />
             </button>

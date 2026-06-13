@@ -4,7 +4,7 @@ import "@/styles/index.css";
 import { Providers } from "@/components/Providers";
 
 export const metadata: Metadata = {
-  title: "WorkTrack — Daily Work Log",
+  title: "TaskFlow — Daily Work Log",
   description: "ระบบบันทึกและติดตามงานรายวันส่วนตัว: Kanban, บันทึกรายวัน และรายงานสรุป",
   robots: { index: false, follow: false },
 };
