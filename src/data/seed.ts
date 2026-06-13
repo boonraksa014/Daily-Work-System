@@ -1,6 +1,11 @@
 import type { Task } from "../components/KanbanBoard";
 import type { LogEntry } from "../components/DailyLog";
-import type { Category } from "../types";
+import type { Category, AppSettings } from "../types";
+
+export const INITIAL_SETTINGS: AppSettings = {
+  displayName: "ผู้ใช้",
+  defaultView: "dashboard",
+};
 
 // หมวดหมู่เริ่มต้น — จัดการเพิ่ม/แก้/ลบได้ที่ ตั้งค่า → หมวดหมู่
 export const INITIAL_CATEGORIES: Category[] = [

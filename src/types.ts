@@ -8,3 +8,9 @@ export interface Category {
   emoji: string;
   color: string; // hex ใช้เป็นสี accent (dot/กราฟ) และ tint พื้นชิป
 }
+
+/** ค่าตั้งค่าทั่วไปของแอป (ตั้งค่า → ทั่วไป) */
+export interface AppSettings {
+  displayName: string;
+  defaultView: View;
+}

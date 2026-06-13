@@ -1,19 +1,18 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { DashboardView } from "@/components/DashboardView";
 import { useData } from "@/lib/store";
-import type { View } from "@/types";
+import { VIEW_PATH } from "@/lib/paths";
 
-const PATHS: Record<View, string> = {
-  dashboard: "/",
-  kanban: "/kanban",
-  log: "/log",
-  reports: "/reports",
-};
-
-export default function DashboardPage() {
+// หน้าแรก: เด้งไปยัง "หน้าเริ่มต้น" ที่ตั้งไว้ (ค่าเริ่มต้น = ภาพรวม)
+export default function Home() {
   const router = useRouter();
-  const { tasks, logEntries } = useData();
-  return <DashboardView tasks={tasks} logEntries={logEntries} onNavigate={v => router.push(PATHS[v])} />;
+  const { settings } = useData();
+
+  useEffect(() => {
+    router.replace(VIEW_PATH[settings.defaultView] ?? "/dashboard");
+  }, [router, settings.defaultView]);
+
+  return <div style={{ height: "60vh" }} aria-hidden />;
 }

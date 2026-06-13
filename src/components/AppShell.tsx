@@ -12,21 +12,24 @@ import { useData } from "@/lib/store";
 import { Logo } from "@/components/Logo";
 
 const NAV_ITEMS = [
-  { href: "/",        label: "ภาพรวม",       emoji: "🏠", icon: <LayoutDashboard size={17} />, gradient: "linear-gradient(135deg, #7c3aed, #a855f7)" },
-  { href: "/kanban",  label: "Kanban",        emoji: "📋", icon: <Kanban size={17} />,           gradient: "linear-gradient(135deg, #0369a1, #38bdf8)" },
-  { href: "/log",     label: "บันทึกรายวัน", emoji: "✍️", icon: <BookOpen size={17} />,         gradient: "linear-gradient(135deg, #059669, #34d399)" },
-  { href: "/reports", label: "รายงาน",        emoji: "📊", icon: <BarChart3 size={17} />,        gradient: "linear-gradient(135deg, #d97706, #fbbf24)" },
+  { href: "/dashboard", label: "ภาพรวม",       emoji: "🏠", icon: <LayoutDashboard size={17} />, gradient: "linear-gradient(135deg, #7c3aed, #a855f7)" },
+  { href: "/kanban",    label: "Kanban",        emoji: "📋", icon: <Kanban size={17} />,           gradient: "linear-gradient(135deg, #0369a1, #38bdf8)" },
+  { href: "/log",       label: "บันทึกรายวัน", emoji: "✍️", icon: <BookOpen size={17} />,         gradient: "linear-gradient(135deg, #059669, #34d399)" },
+  { href: "/reports",   label: "รายงาน",        emoji: "📊", icon: <BarChart3 size={17} />,        gradient: "linear-gradient(135deg, #d97706, #fbbf24)" },
 ];
 
 const SETTINGS_ITEMS = [
+  { href: "/settings/general",    label: "ทั่วไป",   emoji: "🎛️" },
   { href: "/settings/categories", label: "หมวดหมู่", emoji: "🏷️" },
+  { href: "/settings/tags",       label: "แท็ก",     emoji: "🔖" },
+  { href: "/settings/data",       label: "ข้อมูล",   emoji: "💾" },
 ];
 
 const SETTINGS_NAV = { label: "ตั้งค่า · หมวดหมู่", icon: <Settings size={17} />, gradient: "linear-gradient(135deg, #475569, #94a3b8)" };
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { tasks } = useData();
+  const { tasks, settings } = useData();
   const { resolvedTheme, setTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -165,8 +168,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {new Date().toLocaleDateString("th-TH", { day: "numeric", month: "short" })}
               </span>
             </div>
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, #7c3aed, #ec4899)" }}>
-              <span style={{ fontSize: "0.82rem", fontWeight: 900, color: "white" }}>ผ</span>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, #7c3aed, #ec4899)" }} title={settings.displayName}>
+              <span style={{ fontSize: "0.82rem", fontWeight: 900, color: "white" }}>{(settings.displayName.trim()[0] ?? "?").toUpperCase()}</span>
             </div>
           </div>
         </header>

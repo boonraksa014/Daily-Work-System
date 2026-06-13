@@ -4,9 +4,16 @@ import { createContext, useContext, useEffect, useRef, useState, type Dispatch, 
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import type { Task } from "@/components/KanbanBoard";
 import type { LogEntry } from "@/components/DailyLog";
-import type { Category } from "@/types";
+import type { Category, AppSettings } from "@/types";
 import { makeId } from "@/lib/id";
-import { INITIAL_TASKS, INITIAL_LOGS, INITIAL_CATEGORIES } from "@/data/seed";
+import { INITIAL_TASKS, INITIAL_LOGS, INITIAL_CATEGORIES, INITIAL_SETTINGS } from "@/data/seed";
+
+export interface BackupData {
+  tasks: Task[];
+  logEntries: LogEntry[];
+  categories: Category[];
+  settings: AppSettings;
+}
 
 interface DataContextValue {
   tasks: Task[];
@@ -21,6 +28,15 @@ interface DataContextValue {
   addCategory: (data: Omit<Category, "id">) => void;
   updateCategory: (id: string, data: Omit<Category, "id">) => void;
   removeCategory: (id: string) => void;
+  /** เปลี่ยนชื่อแท็กในทุกงาน */
+  renameTag: (oldTag: string, newTag: string) => void;
+  /** ลบแท็กออกจากทุกงาน */
+  removeTag: (tag: string) => void;
+  settings: AppSettings;
+  updateSettings: (patch: Partial<AppSettings>) => void;
+  exportData: () => BackupData;
+  importData: (data: BackupData) => void;
+  resetData: () => void;
 }
 
 const DataContext = createContext<DataContextValue | null>(null);
@@ -33,6 +49,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useLocalStorage<Task[]>("worktrack.tasks", INITIAL_TASKS);
   const [logEntries, setLogEntries] = useLocalStorage<LogEntry[]>("worktrack.logs", INITIAL_LOGS);
   const [categories, setCategories] = useLocalStorage<Category[]>("worktrack.categories", INITIAL_CATEGORIES);
+  const [settings, setSettings] = useLocalStorage<AppSettings>("worktrack.settings", INITIAL_SETTINGS);
   const [mounted, setMounted] = useState(false);
   const [toast, setToast] = useState<{ message: string; onUndo: () => void } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -73,12 +90,44 @@ export function DataProvider({ children }: { children: ReactNode }) {
     notify("ลบหมวดหมู่แล้ว", () => { setToast(null); setCategories(prev => prev.some(c => c.id === id) ? prev : [...prev, removed]); });
   }
 
+  function renameTag(oldTag: string, newTag: string) {
+    const next = newTag.trim();
+    if (!next || next === oldTag) return;
+    setTasks(prev => prev.map(t => t.tags.includes(oldTag)
+      ? { ...t, tags: Array.from(new Set(t.tags.map(tag => tag === oldTag ? next : tag))) }
+      : t));
+  }
+  function removeTag(tag: string) {
+    setTasks(prev => prev.map(t => t.tags.includes(tag) ? { ...t, tags: t.tags.filter(x => x !== tag) } : t));
+    notify("ลบแท็กแล้ว", () => setToast(null));
+  }
+
+  function updateSettings(patch: Partial<AppSettings>) {
+    setSettings(prev => ({ ...prev, ...patch }));
+  }
+
+  function exportData(): BackupData {
+    return { tasks, logEntries, categories, settings };
+  }
+  function importData(data: BackupData) {
+    if (Array.isArray(data.tasks)) setTasks(data.tasks);
+    if (Array.isArray(data.logEntries)) setLogEntries(data.logEntries);
+    if (Array.isArray(data.categories)) setCategories(data.categories);
+    if (data.settings) setSettings(data.settings);
+  }
+  function resetData() {
+    setTasks(INITIAL_TASKS);
+    setLogEntries(INITIAL_LOGS);
+    setCategories(INITIAL_CATEGORIES);
+    setSettings(INITIAL_SETTINGS);
+  }
+
   if (!mounted) {
     return <div style={{ height: "100vh", background: "var(--wt-page)" }} aria-hidden />;
   }
 
   return (
-    <DataContext.Provider value={{ tasks, setTasks, logEntries, setLogEntries, removeTask, removeEntry, categories, addCategory, updateCategory, removeCategory }}>
+    <DataContext.Provider value={{ tasks, setTasks, logEntries, setLogEntries, removeTask, removeEntry, categories, addCategory, updateCategory, removeCategory, renameTag, removeTag, settings, updateSettings, exportData, importData, resetData }}>
       {children}
       {toast && (
         <div role="status" aria-live="polite"
