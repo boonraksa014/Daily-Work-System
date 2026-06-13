@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, MoreHorizontal, Clock, Trash2, X, Sparkles } from "lucide-react";
+import { Plus, MoreHorizontal, Clock, Trash2, X, Sparkles, Pencil, Search } from "lucide-react";
 import { makeId } from "../lib/id";
 
 export type Priority = "low" | "medium" | "high";
@@ -55,19 +55,23 @@ const focusBorder = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>
 const blurBorder = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => (e.target.style.borderColor = "var(--wt-border)");
 const labelStyle: React.CSSProperties = { fontSize: "0.78rem", fontWeight: 700, color: "var(--wt-muted)", textTransform: "uppercase", letterSpacing: "0.05em" };
 
-interface AddTaskModalProps {
+type TaskDraft = Omit<Task, "id" | "createdAt">;
+
+interface TaskModalProps {
   status: Status;
-  onAdd: (task: Omit<Task, "id" | "createdAt">) => void;
+  initial?: Task;
+  onSubmit: (data: TaskDraft) => void;
   onClose: () => void;
 }
 
-function AddTaskModal({ status, onAdd, onClose }: AddTaskModalProps) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [priority, setPriority] = useState<Priority>("medium");
+function TaskModal({ status, initial, onSubmit, onClose }: TaskModalProps) {
+  const isEdit = !!initial;
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [priority, setPriority] = useState<Priority>(initial?.priority ?? "medium");
   const [tagInput, setTagInput] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
-  const [dueDate, setDueDate] = useState("");
+  const [tags, setTags] = useState<string[]>(initial?.tags ?? []);
+  const [dueDate, setDueDate] = useState(initial?.dueDate ?? "");
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -84,7 +88,7 @@ function AddTaskModal({ status, onAdd, onClose }: AddTaskModalProps) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    onAdd({ title: title.trim(), description: description.trim() || undefined, priority, status, tags, dueDate: dueDate || undefined });
+    onSubmit({ title: title.trim(), description: description.trim() || undefined, priority, status, tags, dueDate: dueDate || undefined });
     onClose();
   }
 
@@ -92,13 +96,13 @@ function AddTaskModal({ status, onAdd, onClose }: AddTaskModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(45,31,110,0.4)", backdropFilter: "blur(6px)" }} onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" style={{ border: "1px solid var(--wt-border)" }} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="เพิ่มงานใหม่">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" style={{ border: "1px solid var(--wt-border)" }} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={isEdit ? "แก้ไขงาน" : "เพิ่มงานใหม่"}>
         <div className="px-6 pt-5 pb-4 flex items-center justify-between" style={{ background: col.tint, borderBottom: `1px solid ${col.line}` }}>
           <div className="flex items-center gap-2">
             <span style={{ fontSize: "1.1rem" }}>{col.emoji}</span>
             <div>
-              <h3 style={{ fontSize: "0.98rem", fontWeight: 800, color: "var(--wt-text)" }}>เพิ่มงานใหม่</h3>
-              <p style={{ fontSize: "0.74rem", fontWeight: 600, color: col.ink }}>ลงใน “{col.label}”</p>
+              <h3 style={{ fontSize: "0.98rem", fontWeight: 800, color: "var(--wt-text)" }}>{isEdit ? "แก้ไขงาน" : "เพิ่มงานใหม่"}</h3>
+              <p style={{ fontSize: "0.74rem", fontWeight: 600, color: col.ink }}>{isEdit ? "ใน" : "ลงใน"} “{col.label}”</p>
             </div>
           </div>
           <button onClick={onClose} aria-label="ปิด" className="p-1.5 rounded-xl transition-colors" style={{ color: "var(--wt-muted)" }}
@@ -184,7 +188,7 @@ function AddTaskModal({ status, onAdd, onClose }: AddTaskModalProps) {
             </button>
             <button type="submit" disabled={!title.trim()} className="flex-1 py-3 rounded-xl transition-opacity"
               style={{ background: "linear-gradient(135deg, #7c3aed, #a855f7)", color: "#fff", fontSize: "0.9rem", fontWeight: 800, border: "none", boxShadow: "0 4px 14px rgba(124,58,237,0.35)", opacity: title.trim() ? 1 : 0.5, cursor: title.trim() ? "pointer" : "not-allowed" }}>
-              เพิ่มงาน
+              {isEdit ? "บันทึก" : "เพิ่มงาน"}
             </button>
           </div>
         </form>
@@ -280,6 +284,8 @@ interface KanbanBoardProps {
 
 export function KanbanBoard({ tasks, onTasksChange, onDeleteTask }: KanbanBoardProps) {
   const [addingTo, setAddingTo] = useState<Status | null>(null);
+  const [editing, setEditing] = useState<Task | null>(null);
+  const [query, setQuery] = useState("");
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<Status | null>(null);
   const [menu, setMenu] = useState<{ task: Task; x: number; y: number } | null>(null);
@@ -299,8 +305,12 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask }: KanbanBoardP
     };
   }, [menu]);
 
-  function addTask(data: Omit<Task, "id" | "createdAt">) {
+  function addTask(data: TaskDraft) {
     onTasksChange([...tasks, { ...data, id: makeId("task"), createdAt: new Date().toISOString().split("T")[0] }]);
+  }
+
+  function updateTask(id: string, data: TaskDraft) {
+    onTasksChange(tasks.map(t => t.id === id ? { ...t, ...data } : t));
   }
 
   function deleteTask(id: string) {
@@ -315,72 +325,99 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask }: KanbanBoardP
     setDragOverCol(null);
   }
 
+  const q = query.trim().toLowerCase();
+  const matches = (t: Task) => !q || t.title.toLowerCase().includes(q) || (t.description?.toLowerCase().includes(q) ?? false) || t.tags.some(tag => tag.toLowerCase().includes(q));
+
   const MENU_WIDTH = 176;
   const menuLeft = menu ? Math.max(8, Math.min(menu.x - MENU_WIDTH, window.innerWidth - MENU_WIDTH - 8)) : 0;
 
   return (
-    <div className="flex gap-4 h-full overflow-x-auto pb-2">
-      {STATUSES.map(colId => {
-        const col = COLUMN_CONFIG[colId];
-        const colTasks = tasks.filter(t => t.status === colId);
-        const isOver = dragOverCol === colId;
+    <div className="flex flex-col h-full gap-3">
+      {/* Search */}
+      <div className="relative shrink-0" style={{ maxWidth: 420 }}>
+        <Search size={15} className="absolute top-1/2 -translate-y-1/2 left-3" style={{ color: "var(--wt-muted)" }} />
+        <input
+          value={query} onChange={e => setQuery(e.target.value)}
+          placeholder="ค้นหางาน, รายละเอียด หรือแท็ก..."
+          aria-label="ค้นหางาน"
+          className="w-full rounded-xl outline-none transition-colors"
+          style={{ ...inputStyle, fontSize: "0.85rem", padding: "0.6rem 2.2rem 0.6rem 2.2rem" }}
+          onFocus={focusBorder} onBlur={blurBorder} />
+        {query && (
+          <button onClick={() => setQuery("")} aria-label="ล้างคำค้นหา"
+            className="absolute top-1/2 -translate-y-1/2 right-2 p-1 rounded-lg transition-colors" style={{ color: "var(--wt-muted)" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "var(--wt-soft2)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+            <X size={14} />
+          </button>
+        )}
+      </div>
 
-        return (
-          <div key={colId} className="flex-1 min-w-[280px] flex flex-col"
-            onDragOver={e => { e.preventDefault(); if (dragOverCol !== colId) setDragOverCol(colId); }}
-            onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverCol(null); }}
-            onDrop={() => handleDrop(colId)}>
-            <div
-              className="flex flex-col h-full rounded-2xl overflow-hidden transition-shadow"
-              style={{
-                background: col.tint,
-                border: `1px solid ${isOver ? col.dot : col.line}`,
-                boxShadow: isOver ? `0 0 0 3px ${col.line}` : "none",
-              }}>
+      {/* Columns */}
+      <div className="flex gap-4 flex-1 min-h-0 overflow-x-auto pb-2">
+        {STATUSES.map(colId => {
+          const col = COLUMN_CONFIG[colId];
+          const colTasks = tasks.filter(t => t.status === colId && matches(t));
+          const totalInCol = tasks.filter(t => t.status === colId).length;
+          const isOver = dragOverCol === colId;
 
-              {/* Column header */}
-              <div className="px-4 py-3 flex items-center gap-2">
-                <span style={{ fontSize: "0.95rem" }}>{col.emoji}</span>
-                <span style={{ fontSize: "0.85rem", fontWeight: 800, color: col.ink }}>{col.label}</span>
-                <span className="ml-auto inline-flex items-center justify-center rounded-full"
-                  style={{ minWidth: 22, height: 22, padding: "0 7px", background: "var(--wt-card)", color: col.ink, fontSize: "0.72rem", fontWeight: 800 }}>
-                  {colTasks.length}
-                </span>
-              </div>
+          return (
+            <div key={colId} className="flex-1 min-w-[280px] flex flex-col"
+              onDragOver={e => { e.preventDefault(); if (dragOverCol !== colId) setDragOverCol(colId); }}
+              onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverCol(null); }}
+              onDrop={() => handleDrop(colId)}>
+              <div
+                className="flex flex-col h-full rounded-2xl overflow-hidden transition-shadow"
+                style={{
+                  background: col.tint,
+                  border: `1px solid ${isOver ? col.dot : col.line}`,
+                  boxShadow: isOver ? `0 0 0 3px ${col.line}` : "none",
+                }}>
 
-              {/* Cards */}
-              <div className="flex-1 overflow-y-auto px-3 space-y-2" style={{ scrollbarWidth: "none" }}>
-                {colTasks.length === 0 && (
-                  <div className="flex flex-col items-center justify-center py-12 text-center" style={{ color: "var(--wt-muted)" }}>
-                    <Sparkles size={26} className="mb-2" style={{ opacity: 0.5 }} />
-                    <p style={{ fontSize: "0.8rem", fontWeight: 700 }}>ยังไม่มีงาน</p>
-                    <p style={{ fontSize: "0.72rem", opacity: 0.75, marginTop: 2 }}>กดปุ่มด้านล่างเพื่อเพิ่ม</p>
-                  </div>
-                )}
-                {colTasks.map(task => (
-                  <TaskCard key={task.id} task={task}
-                    onOpenMenu={(t, anchor) => setMenu({ task: t, x: anchor.right, y: anchor.bottom })}
-                    onDragStart={setDraggingId} onDragEnd={() => { setDraggingId(null); setDragOverCol(null); }}
-                    isDragging={draggingId === task.id} />
-                ))}
-              </div>
+                {/* Column header */}
+                <div className="px-4 py-3 flex items-center gap-2">
+                  <span style={{ fontSize: "0.95rem" }}>{col.emoji}</span>
+                  <span style={{ fontSize: "0.85rem", fontWeight: 800, color: col.ink }}>{col.label}</span>
+                  <span className="ml-auto inline-flex items-center justify-center rounded-full"
+                    style={{ minWidth: 22, height: 22, padding: "0 7px", background: "var(--wt-card)", color: col.ink, fontSize: "0.72rem", fontWeight: 800 }}>
+                    {q ? `${colTasks.length}/${totalInCol}` : totalInCol}
+                  </span>
+                </div>
 
-              {/* Add task */}
-              <div className="p-3">
-                <button onClick={() => setAddingTo(colId)}
-                  className="w-full flex items-center justify-center gap-1.5 rounded-xl transition-colors"
-                  style={{ padding: "0.7rem", background: "var(--wt-card)", color: col.ink, fontSize: "0.82rem", fontWeight: 700, border: `1px dashed ${col.line}` }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = col.dot; e.currentTarget.style.borderStyle = "solid"; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = col.line; e.currentTarget.style.borderStyle = "dashed"; }}>
-                  <Plus size={15} /> เพิ่มงาน
-                </button>
+                {/* Cards */}
+                <div className="flex-1 overflow-y-auto px-3 space-y-2" style={{ scrollbarWidth: "none" }}>
+                  {colTasks.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-12 text-center" style={{ color: "var(--wt-muted)" }}>
+                      <Sparkles size={26} className="mb-2" style={{ opacity: 0.5 }} />
+                      <p style={{ fontSize: "0.8rem", fontWeight: 700 }}>{q ? "ไม่พบงานที่ค้นหา" : "ยังไม่มีงาน"}</p>
+                      <p style={{ fontSize: "0.72rem", opacity: 0.75, marginTop: 2 }}>{q ? "ลองคำอื่น" : "กดปุ่มด้านล่างเพื่อเพิ่ม"}</p>
+                    </div>
+                  )}
+                  {colTasks.map(task => (
+                    <TaskCard key={task.id} task={task}
+                      onOpenMenu={(t, anchor) => setMenu({ task: t, x: anchor.right, y: anchor.bottom })}
+                      onDragStart={setDraggingId} onDragEnd={() => { setDraggingId(null); setDragOverCol(null); }}
+                      isDragging={draggingId === task.id} />
+                  ))}
+                </div>
+
+                {/* Add task */}
+                <div className="p-3">
+                  <button onClick={() => setAddingTo(colId)}
+                    className="w-full flex items-center justify-center gap-1.5 rounded-xl transition-colors"
+                    style={{ padding: "0.7rem", background: "var(--wt-card)", color: col.ink, fontSize: "0.82rem", fontWeight: 700, border: `1px dashed ${col.line}` }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = col.dot; e.currentTarget.style.borderStyle = "solid"; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = col.line; e.currentTarget.style.borderStyle = "dashed"; }}>
+                    <Plus size={15} /> เพิ่มงาน
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
 
-      {/* Task actions menu — rendered at board root with fixed position so it
+      {/* Task actions menu — rendered at root with fixed position so it
           escapes the column's overflow clipping and any card hover-transform. */}
       {menu && (
         <div role="menu" className="rounded-2xl py-1.5"
@@ -388,6 +425,14 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask }: KanbanBoardP
             position: "fixed", top: menu.y + 6, left: menuLeft, width: MENU_WIDTH, zIndex: 60,
             background: "var(--wt-card)", border: "1px solid var(--wt-border)", boxShadow: "0 12px 32px rgba(76,29,149,0.22)",
           }}>
+          <button role="menuitem" onClick={() => { setEditing(menu.task); setMenu(null); }}
+            className="flex items-center gap-2 w-full px-4 py-2.5 text-left transition-colors"
+            style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--wt-text)" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "var(--wt-soft2)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+            <Pencil size={13} /> แก้ไข
+          </button>
+          <div style={{ borderTop: "1px solid var(--wt-border)", margin: "4px 0" }} />
           {STATUSES.filter(s => s !== menu.task.status).map(s => {
             const c = COLUMN_CONFIG[s];
             return (
@@ -414,7 +459,8 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask }: KanbanBoardP
       {/* Backdrop to catch outside clicks while the menu is open. */}
       {menu && <div className="fixed inset-0" style={{ zIndex: 55 }} onClick={() => setMenu(null)} />}
 
-      {addingTo && <AddTaskModal status={addingTo} onAdd={addTask} onClose={() => setAddingTo(null)} />}
+      {addingTo && <TaskModal status={addingTo} onSubmit={addTask} onClose={() => setAddingTo(null)} />}
+      {editing && <TaskModal status={editing.status} initial={editing} onSubmit={data => updateTask(editing.id, data)} onClose={() => setEditing(null)} />}
     </div>
   );
 }

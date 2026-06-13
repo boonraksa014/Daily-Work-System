@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Clock, Calendar, ChevronLeft, ChevronRight, CheckCircle2, Circle, Pencil } from "lucide-react";
+import { Plus, Trash2, Clock, ChevronLeft, ChevronRight, CheckCircle2, Circle, Pencil, Search, X } from "lucide-react";
 import { makeId } from "../lib/id";
 
 export interface LogEntry {
@@ -43,28 +43,30 @@ function weekdayThai(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("th-TH", { weekday: "long" });
 }
 
-interface InlineAddFormProps {
-  onAdd: (entry: Omit<LogEntry, "id">) => void;
-  onCancel: () => void;
+interface EntryFormProps {
   date: string;
+  initial?: LogEntry;
+  onSubmit: (entry: Omit<LogEntry, "id">) => void;
+  onCancel: () => void;
 }
 
-function InlineAddForm({ onAdd, onCancel, date }: InlineAddFormProps) {
-  const [title, setTitle] = useState("");
-  const [note, setNote] = useState("");
-  const [hours, setHours] = useState(1);
-  const [category, setCategory] = useState(CATEGORIES[0]);
+function EntryForm({ date, initial, onSubmit, onCancel }: EntryFormProps) {
+  const isEdit = !!initial;
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [note, setNote] = useState(initial?.note ?? "");
+  const [hours, setHours] = useState(initial?.hours ?? 1);
+  const [category, setCategory] = useState(initial?.category ?? CATEGORIES[0]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    onAdd({ date, title: title.trim(), note: note.trim() || undefined, hours, category, done: false });
+    onSubmit({ date, title: title.trim(), note: note.trim() || undefined, hours, category, done: initial?.done ?? false });
   }
 
   return (
     <div className="rounded-2xl overflow-hidden" style={{ border: "2px solid #a78bfa", boxShadow: "0 8px 24px rgba(124,58,237,0.15)" }}>
       <div className="px-4 py-3" style={{ background: "linear-gradient(135deg, #7c3aed, #a855f7)" }}>
-        <p style={{ fontSize: "0.82rem", fontWeight: 800, color: "white" }}>✍️ บันทึกงานใหม่</p>
+        <p style={{ fontSize: "0.82rem", fontWeight: 800, color: "white" }}>{isEdit ? "✏️ แก้ไขรายการ" : "✍️ บันทึกงานใหม่"}</p>
       </div>
       <form onSubmit={handleSubmit} className="bg-white p-4 space-y-3">
         <input
@@ -135,10 +137,10 @@ function InlineAddForm({ onAdd, onCancel, date }: InlineAddFormProps) {
             style={{ border: "2px solid var(--wt-border)", color: "var(--wt-muted)", fontSize: "0.88rem", fontWeight: 700, background: "transparent" }}>
             ยกเลิก
           </button>
-          <button type="submit"
-            className="flex-1 py-3 rounded-xl"
-            style={{ background: "linear-gradient(135deg, #7c3aed, #a855f7)", color: "#fff", fontSize: "0.88rem", fontWeight: 800, border: "none", boxShadow: "0 4px 14px rgba(124,58,237,0.3)" }}>
-            ✨ บันทึกงาน
+          <button type="submit" disabled={!title.trim()}
+            className="flex-1 py-3 rounded-xl transition-opacity"
+            style={{ background: "linear-gradient(135deg, #7c3aed, #a855f7)", color: "#fff", fontSize: "0.88rem", fontWeight: 800, border: "none", boxShadow: "0 4px 14px rgba(124,58,237,0.3)", opacity: title.trim() ? 1 : 0.5, cursor: title.trim() ? "pointer" : "not-allowed" }}>
+            {isEdit ? "บันทึก" : "บันทึกงาน"}
           </button>
         </div>
       </form>
@@ -150,9 +152,10 @@ interface EntryCardProps {
   entry: LogEntry;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
+  onEdit: (id: string) => void;
 }
 
-function EntryCard({ entry, onToggle, onDelete }: EntryCardProps) {
+function EntryCard({ entry, onToggle, onDelete, onEdit }: EntryCardProps) {
   const cat = CAT_CONFIG[entry.category] ?? CAT_CONFIG["อื่นๆ"];
 
   return (
@@ -167,7 +170,7 @@ function EntryCard({ entry, onToggle, onDelete }: EntryCardProps) {
       onMouseLeave={e => (e.currentTarget.style.boxShadow = "0 2px 8px rgba(124,58,237,0.06)")}
     >
       {/* Toggle */}
-      <button onClick={() => onToggle(entry.id)} className="shrink-0 mt-0.5 transition hover:scale-110">
+      <button onClick={() => onToggle(entry.id)} aria-label={entry.done ? "ทำเครื่องหมายยังไม่เสร็จ" : "ทำเครื่องหมายเสร็จ"} className="shrink-0 mt-0.5 transition hover:scale-110">
         {entry.done
           ? <CheckCircle2 size={22} style={{ color: "#34d399" }} />
           : <Circle size={22} style={{ color: "#c4b5fd" }} />}
@@ -191,14 +194,21 @@ function EntryCard({ entry, onToggle, onDelete }: EntryCardProps) {
         </div>
       </div>
 
-      {/* Delete */}
-      <button onClick={() => onDelete(entry.id)}
-        className="shrink-0 opacity-0 group-hover:opacity-100 p-2 rounded-xl transition"
-        style={{ color: "#f43f5e" }}
-        onMouseEnter={e => (e.currentTarget.style.background = "#fff1f2")}
-        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-        <Trash2 size={14} />
-      </button>
+      {/* Actions */}
+      <div className="shrink-0 flex items-start gap-1 opacity-60 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+        <button onClick={() => onEdit(entry.id)} aria-label="แก้ไขรายการ"
+          className="p-2 rounded-xl transition-colors" style={{ color: "var(--wt-muted)" }}
+          onMouseEnter={e => (e.currentTarget.style.background = "var(--wt-soft2)")}
+          onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+          <Pencil size={14} />
+        </button>
+        <button onClick={() => onDelete(entry.id)} aria-label="ลบรายการ"
+          className="p-2 rounded-xl transition-colors" style={{ color: "#f43f5e" }}
+          onMouseEnter={e => (e.currentTarget.style.background = "rgba(244,63,94,0.1)")}
+          onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+          <Trash2 size={14} />
+        </button>
+      </div>
     </div>
   );
 }
@@ -213,11 +223,16 @@ interface DailyLogProps {
 export function DailyLog({ entries, onEntriesChange, onDeleteEntry }: DailyLogProps) {
   const [selectedDate, setSelectedDate] = useState(todayStr());
   const [showAdd, setShowAdd] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
 
   const dayEntries = entries.filter(e => e.date === selectedDate);
   const totalHours = dayEntries.reduce((s, e) => s + e.hours, 0);
   const doneCount = dayEntries.filter(e => e.done).length;
   const completionPct = dayEntries.length > 0 ? Math.round((doneCount / dayEntries.length) * 100) : 0;
+
+  const q = query.trim().toLowerCase();
+  const visibleEntries = dayEntries.filter(e => !q || e.title.toLowerCase().includes(q) || (e.note?.toLowerCase().includes(q) ?? false) || e.category.toLowerCase().includes(q));
 
   const isToday = selectedDate === todayStr();
   const isPast = selectedDate < todayStr();
@@ -225,6 +240,11 @@ export function DailyLog({ entries, onEntriesChange, onDeleteEntry }: DailyLogPr
   function addEntry(data: Omit<LogEntry, "id">) {
     onEntriesChange([...entries, { ...data, id: makeId("log") }]);
     setShowAdd(false);
+  }
+
+  function updateEntry(id: string, data: Omit<LogEntry, "id">) {
+    onEntriesChange(entries.map(e => e.id === id ? { ...e, ...data } : e));
+    setEditingId(null);
   }
 
   function toggleEntry(id: string) { onEntriesChange(entries.map(e => e.id === id ? { ...e, done: !e.done } : e)); }
@@ -241,7 +261,7 @@ export function DailyLog({ entries, onEntriesChange, onDeleteEntry }: DailyLogPr
         <div className="px-5 py-4" style={{ background: "linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #ec4899 100%)" }}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <button onClick={() => setSelectedDate(offsetDate(selectedDate, -1))}
+              <button onClick={() => setSelectedDate(offsetDate(selectedDate, -1))} aria-label="วันก่อนหน้า"
                 className="p-2 rounded-xl transition hover:bg-white/20" style={{ color: "white" }}>
                 <ChevronLeft size={18} />
               </button>
@@ -251,7 +271,7 @@ export function DailyLog({ entries, onEntriesChange, onDeleteEntry }: DailyLogPr
                 </p>
                 <p style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.8)" }}>{formatDateThai(selectedDate)}</p>
               </div>
-              <button onClick={() => setSelectedDate(offsetDate(selectedDate, 1))}
+              <button onClick={() => setSelectedDate(offsetDate(selectedDate, 1))} aria-label="วันถัดไป"
                 className="p-2 rounded-xl transition hover:bg-white/20" style={{ color: "white" }}>
                 <ChevronRight size={18} />
               </button>
@@ -266,6 +286,7 @@ export function DailyLog({ entries, onEntriesChange, onDeleteEntry }: DailyLogPr
               )}
               <input
                 type="date"
+                aria-label="เลือกวันที่"
                 className="px-3 py-1.5 rounded-xl outline-none"
                 style={{ background: "rgba(255,255,255,0.2)", color: "white", fontSize: "0.78rem", border: "1px solid rgba(255,255,255,0.3)", colorScheme: "dark" }}
                 value={selectedDate}
@@ -298,12 +319,35 @@ export function DailyLog({ entries, onEntriesChange, onDeleteEntry }: DailyLogPr
               <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#7c3aed" }}>{completionPct}%</span>
             </div>
             <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "var(--wt-border)" }}>
-              <div className="h-full rounded-full transition-all duration-500"
-                style={{ width: `${completionPct}%`, background: "linear-gradient(90deg, #7c3aed, #34d399)" }} />
+              <div className="h-full w-full rounded-full transition-transform duration-500"
+                style={{ transform: `scaleX(${completionPct / 100})`, transformOrigin: "left", background: "linear-gradient(90deg, #7c3aed, #34d399)" }} />
             </div>
           </div>
         )}
       </div>
+
+      {/* Search (only when the day has entries) */}
+      {dayEntries.length > 0 && (
+        <div className="relative shrink-0">
+          <Search size={15} className="absolute top-1/2 -translate-y-1/2 left-3" style={{ color: "var(--wt-muted)" }} />
+          <input
+            value={query} onChange={e => setQuery(e.target.value)}
+            placeholder="ค้นหารายการในวันนี้..."
+            aria-label="ค้นหารายการ"
+            className="w-full rounded-xl outline-none transition-colors"
+            style={{ border: "2px solid var(--wt-border)", background: "var(--wt-soft)", color: "var(--wt-text)", fontFamily: "inherit", fontSize: "0.85rem", padding: "0.6rem 2.2rem" }}
+            onFocus={e => (e.target.style.borderColor = "#a78bfa")}
+            onBlur={e => (e.target.style.borderColor = "var(--wt-border)")} />
+          {query && (
+            <button onClick={() => setQuery("")} aria-label="ล้างคำค้นหา"
+              className="absolute top-1/2 -translate-y-1/2 right-2 p-1 rounded-lg transition-colors" style={{ color: "var(--wt-muted)" }}
+              onMouseEnter={e => (e.currentTarget.style.background = "var(--wt-soft2)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+              <X size={14} />
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Entries */}
       <div className="flex-1 overflow-y-auto space-y-2.5" style={{ scrollbarWidth: "none" }}>
@@ -316,17 +360,29 @@ export function DailyLog({ entries, onEntriesChange, onDeleteEntry }: DailyLogPr
             <p style={{ fontSize: "0.82rem", color: "var(--wt-muted)", marginTop: 4 }}>เริ่มบันทึกงานที่ทำวันนี้กันเลย!</p>
           </div>
         )}
-        {dayEntries.map(entry => (
-          <EntryCard key={entry.id} entry={entry} onToggle={toggleEntry} onDelete={deleteEntry} />
+        {dayEntries.length > 0 && visibleEntries.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12" style={{ color: "var(--wt-muted)" }}>
+            <Search size={28} style={{ opacity: 0.5 }} />
+            <p style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--wt-text)", marginTop: 8 }}>ไม่พบรายการที่ค้นหา</p>
+            <p style={{ fontSize: "0.78rem", marginTop: 2 }}>ลองคำอื่นดู</p>
+          </div>
+        )}
+        {visibleEntries.map(entry => (
+          editingId === entry.id ? (
+            <EntryForm key={entry.id} date={entry.date} initial={entry}
+              onSubmit={data => updateEntry(entry.id, data)} onCancel={() => setEditingId(null)} />
+          ) : (
+            <EntryCard key={entry.id} entry={entry} onToggle={toggleEntry} onDelete={deleteEntry} onEdit={setEditingId} />
+          )
         ))}
         {showAdd && (
-          <InlineAddForm onAdd={addEntry} onCancel={() => setShowAdd(false)} date={selectedDate} />
+          <EntryForm onSubmit={addEntry} onCancel={() => setShowAdd(false)} date={selectedDate} />
         )}
       </div>
 
       {/* Add button */}
       {!showAdd && (
-        <button onClick={() => setShowAdd(true)}
+        <button onClick={() => { setShowAdd(true); setEditingId(null); }}
           className="flex items-center justify-center gap-2 py-4 rounded-2xl transition-all"
           style={{
             background: "linear-gradient(135deg, #7c3aed, #a855f7)",
