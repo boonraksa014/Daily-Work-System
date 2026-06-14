@@ -73,7 +73,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-3 space-y-1">
+        <nav className="flex-1 min-h-0 overflow-y-auto px-3 space-y-1" style={{ scrollbarWidth: "thin", scrollbarColor: "var(--wt-border) transparent" }}>
           {NAV_ITEMS.map(item => {
             const active = item.href === pathname;
             return (
@@ -125,7 +125,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
 
         {/* Bottom widget */}
-        <div className="px-4 pb-5 pt-3">
+        <div className="px-4 pb-5 pt-3 shrink-0">
           <div className="rounded-2xl p-4 overflow-hidden relative" style={{ background: "linear-gradient(135deg, var(--wt-border), #fce7f3)" }}>
             <div className="absolute" style={{ width: 80, height: 80, borderRadius: "50%", background: "rgba(124,58,237,0.08)", top: -20, right: -20 }} />
             <p style={{ fontSize: "0.68rem", fontWeight: 700, color: "var(--wt-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>งานทั้งหมด</p>
