@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Plus, Trash2, ShieldCheck, User as UserIcon, ToggleLeft, ToggleRight } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { apiFetch } from "@/lib/api";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 interface ManagedUser {
   id: string;
@@ -21,6 +22,7 @@ const inputStyle: React.CSSProperties = {
 
 export default function UsersSettingsPage() {
   const { isAdmin, user, getToken } = useAuth();
+  const confirm = useConfirm();
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +81,7 @@ export default function UsersSettingsPage() {
   }
 
   async function removeUser(id: string, mail: string) {
-    if (!confirm(`ลบบัญชี ${mail}? ข้อมูลทั้งหมดของผู้ใช้นี้จะถูกลบด้วย`)) return;
+    if (!(await confirm({ title: "ลบบัญชีผู้ใช้?", message: `ลบบัญชี ${mail} และข้อมูลทั้งหมดของผู้ใช้นี้อย่างถาวร`, confirmLabel: "ลบบัญชี", danger: true }))) return;
     setError(null);
     try { await call("DELETE", `/${id}`); await load(); }
     catch (e) { setError(e instanceof Error ? e.message : "ลบบัญชีไม่สำเร็จ"); }

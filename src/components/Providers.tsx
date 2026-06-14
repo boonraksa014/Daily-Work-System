@@ -6,6 +6,7 @@ import { AuthProvider } from "@/lib/auth";
 import { AuthGate } from "@/components/AuthGate";
 import { DataProvider } from "@/lib/store";
 import { AppShell } from "@/components/AppShell";
+import { ConfirmProvider } from "@/components/ConfirmDialog";
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
@@ -13,7 +14,9 @@ export function Providers({ children }: { children: ReactNode }) {
       <AuthProvider>
         <AuthGate>
           <DataProvider>
-            <AppShell>{children}</AppShell>
+            <ConfirmProvider>
+              <AppShell>{children}</AppShell>
+            </ConfirmProvider>
           </DataProvider>
         </AuthGate>
       </AuthProvider>

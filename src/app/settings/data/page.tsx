@@ -3,9 +3,11 @@
 import { useRef, useState } from "react";
 import { Download, Upload, RotateCcw } from "lucide-react";
 import { useData, type BackupData } from "@/lib/store";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 export default function DataSettingsPage() {
   const { tasks, logEntries, categories, tags, exportData, importData, resetData } = useData();
+  const confirm = useConfirm();
   const fileRef = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
@@ -30,7 +32,7 @@ export default function DataSettingsPage() {
       if (!Array.isArray(parsed.tasks) || !Array.isArray(parsed.logEntries)) {
         throw new Error("รูปแบบไฟล์ไม่ถูกต้อง");
       }
-      if (!confirm("นำเข้าข้อมูลจะเขียนทับข้อมูลปัจจุบันทั้งหมด ดำเนินการต่อ?")) return;
+      if (!(await confirm({ title: "นำเข้าข้อมูล?", message: "ข้อมูลปัจจุบันทั้งหมดจะถูกเขียนทับด้วยไฟล์นี้", confirmLabel: "นำเข้า", danger: true }))) return;
       importData({
         tasks: parsed.tasks,
         logEntries: parsed.logEntries,
@@ -44,8 +46,8 @@ export default function DataSettingsPage() {
     }
   }
 
-  function handleReset() {
-    if (!confirm("รีเซ็ตจะลบข้อมูลทั้งหมดและคืนค่าตัวอย่างเริ่มต้น ดำเนินการต่อ?")) return;
+  async function handleReset() {
+    if (!(await confirm({ title: "รีเซ็ตข้อมูลทั้งหมด?", message: "ลบงาน บันทึก และหมวดหมู่ทั้งหมด แล้วคืนค่าตัวอย่างเริ่มต้น", confirmLabel: "รีเซ็ต", danger: true }))) return;
     resetData();
     setMsg({ kind: "ok", text: "รีเซ็ตข้อมูลเป็นค่าเริ่มต้นแล้ว" });
   }
@@ -57,7 +59,7 @@ export default function DataSettingsPage() {
       <div className="bg-white rounded-2xl p-5" style={{ border: "2px solid var(--wt-border)", boxShadow: "0 4px 16px rgba(124,58,237,0.08)" }}>
         <h2 style={{ fontSize: "1.05rem", fontWeight: 800, color: "var(--wt-text)" }}>ข้อมูล</h2>
         <p style={{ fontSize: "0.78rem", color: "var(--wt-muted)" }}>
-          ข้อมูลเก็บในเบราว์เซอร์นี้เท่านั้น ({tasks.length} งาน · {logEntries.length} บันทึก · {categories.length} หมวดหมู่) — สำรองไว้กันหาย
+          ข้อมูลซิงก์กับเซิร์ฟเวอร์ของบัญชีคุณ ({tasks.length} งาน · {logEntries.length} บันทึก · {categories.length} หมวดหมู่) — ส่งออกไฟล์ไว้สำรองเพิ่มได้
         </p>
 
         {msg && (

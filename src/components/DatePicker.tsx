@@ -23,7 +23,7 @@ const CAL_WIDTH = 268;
 
 export function DatePicker({ value, onChange, min, max, tone = "default", placeholder = "เลือกวันที่", clearable, ariaLabel }: DatePickerProps) {
   const [open, setOpen] = useState(false);
-  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const [pos, setPos] = useState<{ x: number; top: number | null; bottom: number | null } | null>(null);
   const today = new Date();
   const [view, setView] = useState(() => { const d = value ? parseKey(value) : today; return { y: d.getFullYear(), m: d.getMonth() }; });
 
@@ -44,7 +44,11 @@ export function DatePicker({ value, onChange, min, max, tone = "default", placeh
   function openAt(e: React.MouseEvent) {
     const r = e.currentTarget.getBoundingClientRect();
     const x = Math.max(8, Math.min(r.left, window.innerWidth - CAL_WIDTH - 8));
-    setPos({ x, y: r.bottom + 6 });
+    // เปิดขึ้นบนถ้าด้านล่างไม่พอและด้านบนมีที่ว่างมากกว่า
+    const EST = 340;
+    const up = r.bottom + EST + 8 > window.innerHeight && r.top > EST;
+    if (up) setPos({ x, top: null, bottom: window.innerHeight - r.top + 6 });
+    else setPos({ x, top: r.bottom + 6, bottom: null });
     if (value) { const d = parseKey(value); setView({ y: d.getFullYear(), m: d.getMonth() }); }
     setOpen(true);
   }
@@ -83,7 +87,7 @@ export function DatePicker({ value, onChange, min, max, tone = "default", placeh
           <div className="fixed inset-0" style={{ zIndex: 90 }} onClick={() => setOpen(false)} />
           <div role="dialog" aria-label="ปฏิทิน"
             className="fixed rounded-2xl p-3"
-            style={{ top: pos.y, left: pos.x, width: CAL_WIDTH, zIndex: 91, background: "var(--wt-card)", border: "1px solid var(--wt-border)", boxShadow: "0 14px 36px rgba(76,29,149,0.22)", transformOrigin: "top", animation: "wt-pop-in 0.14s cubic-bezier(0.22,1,0.36,1)" }}>
+            style={{ top: pos.top ?? undefined, bottom: pos.bottom ?? undefined, left: pos.x, width: CAL_WIDTH, zIndex: 91, background: "var(--wt-card)", border: "1px solid var(--wt-border)", boxShadow: "0 14px 36px rgba(76,29,149,0.22)", transformOrigin: pos.bottom !== null ? "bottom" : "top", animation: "wt-pop-in 0.14s cubic-bezier(0.22,1,0.36,1)" }}>
             {/* Month nav */}
             <div className="flex items-center justify-between mb-2">
               <button type="button" onClick={() => setView(v => v.m === 0 ? { y: v.y - 1, m: 11 } : { y: v.y, m: v.m - 1 })}

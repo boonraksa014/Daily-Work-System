@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, useRef, useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
   LayoutDashboard, Kanban, BookOpen, BarChart3,
-  Sun, Moon, Menu, X, Settings, ChevronDown
+  Sun, Moon, Menu, X, Settings, ChevronDown, User, LogOut
 } from "lucide-react";
 import { useData } from "@/lib/store";
 import { useAuth } from "@/lib/auth";
@@ -34,11 +34,20 @@ const SETTINGS_GRADIENT = "linear-gradient(135deg, #475569, #94a3b8)";
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { tasks, settings } = useData();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user, signOut } = useAuth();
   const settingsItems = isAdmin ? [...SETTINGS_ITEMS, ADMIN_SETTINGS_ITEM] : SETTINGS_ITEMS;
   const { resolvedTheme, setTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false); };
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, [menuOpen]);
 
   const isDark = resolvedTheme === "dark";
   const onSettings = pathname.startsWith("/settings");
@@ -177,13 +186,46 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {new Date().toLocaleDateString("th-TH", { day: "numeric", month: "short" })}
               </span>
             </div>
-            <Link href="/settings/profile" aria-label="โปรไฟล์" title={settings.displayName}
-              className="w-8 h-8 rounded-xl flex items-center justify-center transition-transform"
-              style={{ background: settings.avatarColor }}
-              onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.08)")}
-              onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}>
-              <span style={{ fontSize: "0.82rem", fontWeight: 900, color: "white" }}>{(settings.displayName.trim()[0] ?? "?").toUpperCase()}</span>
-            </Link>
+            <div className="relative" ref={menuRef}>
+              <button onClick={() => setMenuOpen(o => !o)} aria-label="เมนูบัญชี" aria-haspopup="menu" aria-expanded={menuOpen}
+                className="w-8 h-8 rounded-xl flex items-center justify-center transition-transform"
+                style={{ background: settings.avatarColor }}
+                onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.08)")}
+                onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}>
+                <span style={{ fontSize: "0.82rem", fontWeight: 900, color: "white" }}>{(settings.displayName.trim()[0] ?? "?").toUpperCase()}</span>
+              </button>
+
+              {menuOpen && (
+                <div role="menu" className="absolute right-0 mt-2 rounded-2xl overflow-hidden"
+                  style={{ width: 220, background: "var(--wt-card)", border: "2px solid var(--wt-border)", boxShadow: "0 14px 40px rgba(45,31,110,0.22)", zIndex: 40, animation: "wt-pop-in 0.14s cubic-bezier(0.22,1,0.36,1)" }}>
+                  <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: "1px solid var(--wt-border)" }}>
+                    <span className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: settings.avatarColor }}>
+                      <span style={{ fontSize: "0.9rem", fontWeight: 900, color: "white" }}>{(settings.displayName.trim()[0] ?? "?").toUpperCase()}</span>
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate" style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--wt-text)" }}>{settings.displayName || "ผู้ใช้"}</p>
+                      <p className="truncate" style={{ fontSize: "0.72rem", color: "var(--wt-muted)" }}>{user?.email ?? ""}</p>
+                    </div>
+                  </div>
+                  <Link href="/settings/profile" role="menuitem" onClick={() => setMenuOpen(false)}
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 transition-colors"
+                    style={{ color: "var(--wt-text)" }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "var(--wt-soft2)")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                    <User size={16} style={{ color: "var(--wt-muted)" }} />
+                    <span style={{ fontSize: "0.84rem", fontWeight: 700 }}>โปรไฟล์</span>
+                  </Link>
+                  <button role="menuitem" onClick={() => { setMenuOpen(false); signOut(); }}
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 transition-colors text-left"
+                    style={{ color: "#e11d48" }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "rgba(225,29,72,0.08)")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                    <LogOut size={16} />
+                    <span style={{ fontSize: "0.84rem", fontWeight: 800 }}>ออกจากระบบ</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 

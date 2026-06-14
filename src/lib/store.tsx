@@ -7,6 +7,7 @@ import type { Category, AppSettings, Tag } from "@/types";
 import { makeId } from "@/lib/id";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { Logo } from "@/components/Logo";
 import { INITIAL_CATEGORIES, INITIAL_SETTINGS } from "@/data/seed";
 
 export interface BackupData {
@@ -385,7 +386,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }
 
   if (!loaded) {
-    return <div style={{ height: "100vh", background: "var(--wt-page)" }} aria-hidden />;
+    return (
+      <div className="flex flex-col items-center justify-center gap-5" role="status" aria-label="กำลังโหลด"
+        style={{ height: "100vh", background: "var(--wt-page)", fontFamily: "Nunito, 'Nunito Sans', system-ui, sans-serif" }}>
+        <Logo iconSize={44} />
+        <div className="flex items-center gap-2.5">
+          <span style={{ width: 18, height: 18, borderRadius: "50%", border: "2.5px solid var(--wt-border)", borderTopColor: "#7c3aed", display: "inline-block", animation: "wt-spin 0.7s linear infinite" }} />
+          <span style={{ fontSize: "0.85rem", color: "var(--wt-muted)", fontWeight: 600 }}>กำลังโหลดข้อมูล…</span>
+        </div>
+      </div>
+    );
   }
 
   return (
