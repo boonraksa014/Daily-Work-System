@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Plus, MoreHorizontal, Clock, Trash2, X, Sparkles, Pencil, Search } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Plus, MoreHorizontal, Clock, Trash2, X, Sparkles, Pencil, Search, ChevronDown, Check } from "lucide-react";
 import { makeId } from "../lib/id";
 import { DatePicker } from "./DatePicker";
 
@@ -65,19 +65,86 @@ const labelStyle: React.CSSProperties = { fontSize: "0.78rem", fontWeight: 700, 
 
 type TaskDraft = Omit<Task, "id" | "createdAt">;
 
+/** เลือกแท็กได้หลายตัวจาก master (dropdown + checkbox) */
+function TagMultiSelect({ options, value, onChange }: { options: string[]; value: string[]; onChange: (next: string[]) => void }) {
+  const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  // รวม options ของ master กับที่เลือกไว้ (เผื่อแท็กที่เลือกถูกปิด/ลบจาก master แล้ว)
+  const all = Array.from(new Set([...options, ...value]));
+  const f = filter.trim().toLowerCase();
+  const shown = all.filter(t => !f || t.toLowerCase().includes(f)).sort();
+
+  return (
+    <div className="relative mt-1" ref={ref}>
+      <button type="button" onClick={() => setOpen(o => !o)} aria-haspopup="listbox" aria-expanded={open}
+        className="w-full px-3 py-2.5 rounded-xl outline-none flex items-center justify-between gap-2 transition-colors"
+        style={{ ...inputStyle, fontSize: "0.85rem", borderColor: open ? "#a78bfa" : "var(--wt-border)" }}>
+        <span style={{ color: value.length ? "var(--wt-text)" : "var(--wt-muted)", fontWeight: value.length ? 600 : 400 }}>
+          {value.length ? `เลือกแล้ว ${value.length} แท็ก` : "เลือกแท็ก..."}
+        </span>
+        <ChevronDown size={16} style={{ color: "var(--wt-muted)", transform: open ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
+      </button>
+
+      {open && (
+        <div role="listbox" className="absolute z-10 left-0 right-0 mt-1 rounded-xl overflow-hidden"
+          style={{ background: "var(--wt-card)", border: "2px solid var(--wt-border)", boxShadow: "0 12px 30px rgba(0,0,0,0.18)" }}>
+          {all.length > 6 && (
+            <div className="p-2" style={{ borderBottom: "1px solid var(--wt-border)" }}>
+              <input value={filter} onChange={e => setFilter(e.target.value)} placeholder="ค้นหาแท็ก..." autoFocus
+                className="w-full px-2.5 py-1.5 rounded-lg outline-none" style={{ ...inputStyle, fontSize: "0.82rem" }} />
+            </div>
+          )}
+          <div style={{ maxHeight: 200, overflowY: "auto" }}>
+            {shown.length === 0 && (
+              <p className="px-3 py-3 text-center" style={{ fontSize: "0.8rem", color: "var(--wt-muted)" }}>
+                {all.length === 0 ? "ยังไม่มีแท็ก — เพิ่มที่ ตั้งค่า → แท็ก" : "ไม่พบแท็ก"}
+              </p>
+            )}
+            {shown.map(t => {
+              const checked = value.includes(t);
+              return (
+                <button key={t} type="button" role="option" aria-selected={checked} onClick={() => onChange(toggle(value, t))}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors"
+                  style={{ background: checked ? "var(--wt-soft2)" : "transparent" }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "var(--wt-soft2)")}
+                  onMouseLeave={e => (e.currentTarget.style.background = checked ? "var(--wt-soft2)" : "transparent")}>
+                  <span className="inline-flex items-center justify-center rounded shrink-0"
+                    style={{ width: 16, height: 16, border: `2px solid ${checked ? "#7c3aed" : "var(--wt-border)"}`, background: checked ? "#7c3aed" : "transparent" }}>
+                    {checked && <Check size={11} color="#fff" />}
+                  </span>
+                  <span style={{ fontSize: "0.84rem", fontWeight: 600, color: "var(--wt-text)" }}>{t}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface TaskModalProps {
   status: Status;
   initial?: Task;
+  availableTags: string[];
   onSubmit: (data: TaskDraft) => void;
   onClose: () => void;
 }
 
-function TaskModal({ status, initial, onSubmit, onClose }: TaskModalProps) {
+function TaskModal({ status, initial, availableTags, onSubmit, onClose }: TaskModalProps) {
   const isEdit = !!initial;
   const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [priority, setPriority] = useState<Priority>(initial?.priority ?? "medium");
-  const [tagInput, setTagInput] = useState("");
   const [tags, setTags] = useState<string[]>(initial?.tags ?? []);
   const [dueDate, setDueDate] = useState(initial?.dueDate ?? "");
 
@@ -86,12 +153,6 @@ function TaskModal({ status, initial, onSubmit, onClose }: TaskModalProps) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
-
-  function addTag() {
-    const t = tagInput.trim();
-    if (t && !tags.includes(t)) setTags([...tags, t]);
-    setTagInput("");
-  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -167,11 +228,8 @@ function TaskModal({ status, initial, onSubmit, onClose }: TaskModalProps) {
           </div>
 
           <div>
-            <label htmlFor="task-tag" style={labelStyle}>แท็ก</label>
-            <input id="task-tag" className="w-full mt-1 px-3 py-2.5 rounded-xl outline-none transition-colors"
-              style={{ ...inputStyle, fontSize: "0.85rem" }} onFocus={focusBorder} onBlur={blurBorder}
-              placeholder="พิมพ์แท็กแล้วกด Enter เพื่อเพิ่ม..." value={tagInput} onChange={e => setTagInput(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }} />
+            <label style={labelStyle}>แท็ก</label>
+            <TagMultiSelect options={availableTags} value={tags} onChange={setTags} />
             {tags.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {tags.map(t => {
@@ -290,9 +348,11 @@ interface KanbanBoardProps {
   onTasksChange: (tasks: Task[]) => void;
   /** ถ้าส่งมา จะใช้แทนการลบตรงๆ (เพื่อให้มี undo) */
   onDeleteTask?: (id: string) => void;
+  /** รายชื่อแท็กจาก master (เฉพาะที่เปิดใช้งาน) สำหรับ dropdown เลือกแท็ก */
+  availableTags?: string[];
 }
 
-export function KanbanBoard({ tasks, onTasksChange, onDeleteTask }: KanbanBoardProps) {
+export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags = [] }: KanbanBoardProps) {
   const [addingTo, setAddingTo] = useState<Status | null>(null);
   const [editing, setEditing] = useState<Task | null>(null);
   const [query, setQuery] = useState("");
@@ -514,8 +574,8 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask }: KanbanBoardP
       {/* Backdrop to catch outside clicks while the menu is open. */}
       {menu && <div className="fixed inset-0" style={{ zIndex: 55 }} onClick={() => setMenu(null)} />}
 
-      {addingTo && <TaskModal status={addingTo} onSubmit={addTask} onClose={() => setAddingTo(null)} />}
-      {editing && <TaskModal status={editing.status} initial={editing} onSubmit={data => updateTask(editing.id, data)} onClose={() => setEditing(null)} />}
+      {addingTo && <TaskModal status={addingTo} availableTags={availableTags} onSubmit={addTask} onClose={() => setAddingTo(null)} />}
+      {editing && <TaskModal status={editing.status} initial={editing} availableTags={availableTags} onSubmit={data => updateTask(editing.id, data)} onClose={() => setEditing(null)} />}
     </div>
   );
 }
