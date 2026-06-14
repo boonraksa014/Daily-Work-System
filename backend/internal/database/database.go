@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -10,10 +11,20 @@ import (
 )
 
 // New สร้าง connection pool ไปยัง Postgres ของ Supabase
-func New(ctx context.Context, url string) (*pgxpool.Pool, error) {
-	cfg, err := pgxpool.ParseConfig(url)
+func New(ctx context.Context, connURL string) (*pgxpool.Pool, error) {
+	cfg, err := pgxpool.ParseConfig(connURL)
 	if err != nil {
-		return nil, fmt.Errorf("parse database url: %w", err)
+		// รหัสผ่านอาจมีอักขระพิเศษ ( / [ ] @ ) ที่ทำให้ URL parser ล้มเหลว
+		// → ถอดรหัสผ่านออกจาก URL ให้ parse ส่วนที่เหลือได้ แล้วเซ็ตรหัสผ่านดิบกลับเข้า pgx
+		if stripped, pass, ok := stripPassword(connURL); ok {
+			cfg, err = pgxpool.ParseConfig(stripped)
+			if err == nil {
+				cfg.ConnConfig.Password = pass
+			}
+		}
+		if err != nil {
+			return nil, fmt.Errorf("parse database url: %w", err)
+		}
 	}
 	cfg.MaxConns = 10
 	cfg.MaxConnLifetime = time.Hour
@@ -31,6 +42,32 @@ func New(ctx context.Context, url string) (*pgxpool.Pool, error) {
 		return nil, fmt.Errorf("ping database: %w", err)
 	}
 	return pool, nil
+}
+
+// stripPassword แยกรหัสผ่านออกจาก connection URL คืน (urlไม่มีรหัสผ่าน, รหัสผ่านดิบ, ok)
+// ใช้ LastIndex("@") หา separator ก่อน host (host/query ไม่มี '@') จึงทนต่อ / [ ] @ ในรหัสผ่าน
+func stripPassword(raw string) (string, string, bool) {
+	i := strings.Index(raw, "://")
+	if i < 0 {
+		return raw, "", false
+	}
+	scheme := raw[:i]
+	rest := raw[i+3:]
+
+	at := strings.LastIndex(rest, "@")
+	if at < 0 {
+		return raw, "", false
+	}
+	userinfo := rest[:at]
+	hostTail := rest[at+1:]
+
+	c := strings.Index(userinfo, ":")
+	if c < 0 {
+		return raw, "", false // ไม่มีรหัสผ่านในส่วน userinfo
+	}
+	user := userinfo[:c]
+	pass := userinfo[c+1:]
+	return scheme + "://" + user + "@" + hostTail, pass, true
 }
 
 // WithUser รัน fn ภายใน transaction ที่ตั้ง request.jwt.claims ของผู้ใช้ไว้
