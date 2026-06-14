@@ -187,6 +187,12 @@
   to   { opacity: 1; transform: none; }
 }
 
+/* Pulsing dot for the "saving…" sync indicator */
+@keyframes wt-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+
 /* Keyboard focus ring, app-wide. Mouse clicks don't trigger it. */
 :where(button, a, input, textarea, select, [role="menuitem"], [tabindex]):focus-visible {
   outline: 2px solid var(--wt-focus);

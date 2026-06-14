@@ -80,14 +80,16 @@ function profileBody(s: AppSettings): Record<string, unknown> {
   return { displayName: s.displayName, role: s.role, avatarColor: s.avatarColor, defaultView: s.defaultView };
 }
 
-/** sync collection ปัจจุบันกับ snapshot ล่าสุด: POST ที่ใหม่ + PATCH ที่เปลี่ยน + DELETE ที่หายไป */
+/** sync collection ปัจจุบันกับ snapshot ล่าสุด: POST ที่ใหม่ + PATCH ที่เปลี่ยน + DELETE ที่หายไป
+ *  คืน true ถ้าสำเร็จทั้งหมด, false ถ้ามีบางรายการล้มเหลว (item ที่ล้มเหลวจะไม่อัปเดต snapshot → ลองใหม่รอบหน้า) */
 async function syncCollection<T extends { id: string }>(
   token: string | null,
   path: string,
   current: T[],
   snapshot: Map<string, string>,
   toBody: (item: T) => Record<string, unknown>,
-) {
+): Promise<boolean> {
+  let ok = true;
   const curIds = new Set(current.map(i => i.id));
   for (const item of current) {
     const body = toBody(item);
@@ -103,6 +105,7 @@ async function syncCollection<T extends { id: string }>(
       snapshot.set(item.id, key);
     } catch (e) {
       console.error("sync error", path, item.id, e);
+      ok = false;
     }
   }
   for (const id of [...snapshot.keys()]) {
@@ -112,9 +115,31 @@ async function syncCollection<T extends { id: string }>(
         snapshot.delete(id);
       } catch (e) {
         console.error("delete error", path, id, e);
+        ok = false;
       }
     }
   }
+  return ok;
+}
+
+type SyncState = "idle" | "saving" | "saved" | "error";
+
+/** แถบสถานะการบันทึกขึ้น backend (มุมขวาล่าง) */
+function SyncIndicator({ state }: { state: SyncState }) {
+  if (state === "idle") return null;
+  const cfg = {
+    saving: { text: "กำลังบันทึก…", bg: "var(--wt-text)", color: "var(--wt-card)", dot: "#a855f7" },
+    saved: { text: "บันทึกแล้ว", bg: "var(--wt-text)", color: "var(--wt-card)", dot: "#34d399" },
+    error: { text: "บันทึกไม่สำเร็จ — กำลังลองใหม่", bg: "#9f1239", color: "#fff", dot: "#fda4af" },
+  }[state];
+  return (
+    <div role="status" aria-live="polite"
+      className="fixed right-4 bottom-4 flex items-center gap-2 px-3 py-2 rounded-xl"
+      style={{ zIndex: 70, background: cfg.bg, boxShadow: "0 8px 24px rgba(0,0,0,0.22)" }}>
+      <span className="inline-block rounded-full" style={{ width: 8, height: 8, background: cfg.dot, animation: state === "saving" ? "wt-pulse 1s ease-in-out infinite" : "none" }} />
+      <span style={{ fontSize: "0.78rem", fontWeight: 700, color: cfg.color }}>{cfg.text}</span>
+    </div>
+  );
 }
 
 export function DataProvider({ children }: { children: ReactNode }) {
@@ -125,8 +150,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [tags, setTagDefs] = useState<Tag[]>([]);
   const [settings, setSettings] = useState<AppSettings>(INITIAL_SETTINGS);
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [loadNonce, setLoadNonce] = useState(0);
+  const [syncState, setSyncState] = useState<SyncState>("idle");
+  const [retryNonce, setRetryNonce] = useState(0);
   const [toast, setToast] = useState<{ message: string; onUndo: () => void } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // snapshots ของสิ่งที่อยู่บน backend ล่าสุด (ไว้ทำ diff)
   const taskSnap = useRef(new Map<string, string>());
@@ -135,11 +166,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const tagSnap = useRef(new Map<string, string>());
   const settingsSnap = useRef<string>("");
 
+  // อัปเดตสถานะการบันทึก + ตั้งลองใหม่อัตโนมัติเมื่อล้มเหลว
+  function finishSync(ok: boolean) {
+    setSyncState(ok ? "saved" : "error");
+    if (savedTimer.current) clearTimeout(savedTimer.current);
+    if (retryTimer.current) clearTimeout(retryTimer.current);
+    if (ok) {
+      savedTimer.current = setTimeout(() => setSyncState("idle"), 1500);
+    } else {
+      retryTimer.current = setTimeout(() => setRetryNonce(n => n + 1), 4000); // ลองใหม่ใน 4 วิ
+    }
+  }
+
   // ── load ของ user นี้ ──
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
     setLoaded(false);
+    setLoadError(false);
     (async () => {
       try {
         const token = await getToken();
@@ -195,45 +239,56 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setLoaded(true);
       } catch (e) {
         console.error("load failed", e);
-        if (!cancelled) setLoaded(true); // ไม่ให้ค้างหน้าโหลด
+        if (!cancelled) { setLoadError(true); setLoaded(true); } // แสดงหน้า error + ปุ่มลองใหม่
       }
     })();
     return () => { cancelled = true; };
-  }, [user, getToken]);
+  }, [user, getToken, loadNonce]);
 
   // ── sync ข้อมูลหลัก (debounced) ──
   useEffect(() => {
-    if (!user || !loaded) return;
+    if (!user || !loaded || loadError) return;
     const t = setTimeout(async () => {
       const token = await getToken();
+      setSyncState("saving");
       // categories ก่อน เพื่อให้ category มีอยู่ก่อน log อ้างถึง (FK)
-      await syncCollection(token, "/categories", categories, catSnap.current, categoryBody);
-      await syncCollection(token, "/tags", tags, tagSnap.current, tagBody);
-      await syncCollection(token, "/tasks", tasks, taskSnap.current, taskBody);
+      let ok = await syncCollection(token, "/categories", categories, catSnap.current, categoryBody);
+      ok = (await syncCollection(token, "/tags", tags, tagSnap.current, tagBody)) && ok;
+      ok = (await syncCollection(token, "/tasks", tasks, taskSnap.current, taskBody)) && ok;
       const catIdByName = new Map(categories.map(c => [c.name, c.id]));
-      await syncCollection(token, "/logs", logEntries, entrySnap.current, (e) => entryBody(e, catIdByName));
+      ok = (await syncCollection(token, "/logs", logEntries, entrySnap.current, (e) => entryBody(e, catIdByName))) && ok;
+      finishSync(ok);
     }, 600);
     return () => clearTimeout(t);
-  }, [tasks, logEntries, categories, tags, loaded, user, getToken]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks, logEntries, categories, tags, loaded, user, getToken, retryNonce]);
 
   // ── sync profile/settings (debounced) ──
   useEffect(() => {
-    if (!user || !loaded) return;
+    if (!user || !loaded || loadError) return;
     const body = JSON.stringify(profileBody(settings));
     if (settingsSnap.current === body) return;
     const t = setTimeout(async () => {
       try {
+        setSyncState("saving");
         const token = await getToken();
         await apiFetch(token, "/profile", { method: "PUT", body });
         settingsSnap.current = body;
+        finishSync(true);
       } catch (e) {
         console.error("profile sync error", e);
+        finishSync(false);
       }
     }, 600);
     return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings, loaded, user, getToken]);
 
-  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
+  useEffect(() => () => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    if (savedTimer.current) clearTimeout(savedTimer.current);
+    if (retryTimer.current) clearTimeout(retryTimer.current);
+  }, []);
 
   function notify(message: string, onUndo: () => void) {
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -310,6 +365,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setSettings(INITIAL_SETTINGS);
   }
 
+  if (loadError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "var(--wt-page)", fontFamily: "Nunito, 'Nunito Sans', system-ui, sans-serif" }}>
+        <div className="w-full max-w-sm bg-white rounded-2xl p-6 text-center" style={{ border: "2px solid var(--wt-border)", boxShadow: "0 12px 40px rgba(124,58,237,0.12)" }}>
+          <p style={{ fontSize: "1.6rem" }}>⚠️</p>
+          <p className="mt-2" style={{ fontSize: "0.98rem", fontWeight: 800, color: "var(--wt-text)" }}>โหลดข้อมูลไม่สำเร็จ</p>
+          <p className="mt-1" style={{ fontSize: "0.82rem", color: "var(--wt-muted)" }}>
+            เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ตรวจสอบว่าเปิด backend อยู่และอินเทอร์เน็ตปกติ แล้วลองใหม่
+          </p>
+          <button onClick={() => { setLoadError(false); setLoadNonce(n => n + 1); }}
+            className="mt-4 px-5 py-2.5 rounded-xl"
+            style={{ background: "linear-gradient(135deg, #7c3aed, #a855f7)", color: "#fff", fontSize: "0.88rem", fontWeight: 800, border: "none" }}>
+            ลองใหม่
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!loaded) {
     return <div style={{ height: "100vh", background: "var(--wt-page)" }} aria-hidden />;
   }
@@ -317,6 +391,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   return (
     <DataContext.Provider value={{ tasks, setTasks, logEntries, setLogEntries, removeTask, removeEntry, categories, addCategory, updateCategory, removeCategory, tags, addTag, setTagActive, renameTag, removeTag, settings, updateSettings, exportData, importData, resetData }}>
       {children}
+      <SyncIndicator state={syncState} />
       {toast && (
         <div role="status" aria-live="polite"
           className="fixed left-1/2 bottom-6 flex items-center gap-3 px-4 py-2.5 rounded-2xl"
