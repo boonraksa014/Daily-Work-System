@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Trash2, Clock, ChevronLeft, ChevronRight, CheckCircle2, Circle, Pencil, Search, X } from "lucide-react";
 import { makeId } from "../lib/id";
 import type { Category } from "../types";
@@ -230,6 +230,14 @@ export function DailyLog({ entries, categories, onEntriesChange, onDeleteEntry }
   const [editingId, setEditingId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
 
+  // ปิด popup เพิ่มงานด้วย Escape
+  useEffect(() => {
+    if (!showAdd) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setShowAdd(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showAdd]);
+
   const q = query.trim().toLowerCase();
   const matchSearch = (e: LogEntry) => !q || e.title.toLowerCase().includes(q) || (e.note?.toLowerCase().includes(q) ?? false) || e.category.toLowerCase().includes(q);
 
@@ -388,7 +396,7 @@ export function DailyLog({ entries, categories, onEntriesChange, onDeleteEntry }
 
       {/* Entries */}
       <div className="flex-1 overflow-y-auto space-y-2.5" style={{ scrollbarWidth: "none" }}>
-        {baseEntries.length === 0 && !showAdd && (
+        {baseEntries.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16" style={{ color: "var(--wt-muted)" }}>
             <div className="w-20 h-20 rounded-full flex items-center justify-center mb-4" style={{ background: "var(--wt-border)" }}>
               <Pencil size={32} style={{ color: "#a78bfa" }} />
@@ -423,15 +431,10 @@ export function DailyLog({ entries, categories, onEntriesChange, onDeleteEntry }
             </div>
           );
         })}
-
-        {/* Add form (day mode only) */}
-        {showAdd && mode === "day" && (
-          <EntryForm onSubmit={addEntry} onCancel={() => setShowAdd(false)} date={selectedDate} categories={categories} />
-        )}
       </div>
 
       {/* Add button (day mode only) */}
-      {mode === "day" && !showAdd && (
+      {mode === "day" && (
         <button onClick={() => { setShowAdd(true); setEditingId(null); }}
           className="flex items-center justify-center gap-2 py-4 rounded-2xl transition-all"
           style={{
@@ -443,6 +446,17 @@ export function DailyLog({ entries, categories, onEntriesChange, onDeleteEntry }
           onMouseLeave={e => (e.currentTarget.style.boxShadow = "0 6px 20px rgba(124,58,237,0.35)")}>
           <Plus size={18} /> เพิ่มงาน
         </button>
+      )}
+
+      {/* Add entry popup (day mode only) */}
+      {showAdd && mode === "day" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(45,31,110,0.4)", backdropFilter: "blur(6px)" }}
+          onClick={() => setShowAdd(false)}>
+          <div className="w-full max-w-md" style={{ maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+            <EntryForm onSubmit={addEntry} onCancel={() => setShowAdd(false)} date={selectedDate} categories={categories} />
+          </div>
+        </div>
       )}
     </div>
   );
