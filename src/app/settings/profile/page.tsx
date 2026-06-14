@@ -1,6 +1,8 @@
 "use client";
 
+import { LogOut } from "lucide-react";
 import { useData } from "@/lib/store";
+import { useAuth } from "@/lib/auth";
 
 const SWATCHES = ["#7c3aed", "#ec4899", "#0ea5e9", "#059669", "#d97706", "#db2777", "#0891b2", "#475569"];
 
@@ -11,6 +13,7 @@ const inputStyle: React.CSSProperties = {
 
 export default function ProfileSettingsPage() {
   const { settings, updateSettings } = useData();
+  const { user, signOut } = useAuth();
   const initial = (settings.displayName.trim()[0] ?? "?").toUpperCase();
 
   return (
@@ -71,11 +74,22 @@ export default function ProfileSettingsPage() {
               </label>
             </div>
           </div>
-        </div>
 
-        <p className="mt-4" style={{ fontSize: "0.72rem", color: "var(--wt-muted)" }}>
-          แอปนี้ใช้งานในเครื่องนี้เท่านั้น (ไม่มีการล็อกอิน) ข้อมูลโปรไฟล์ใช้เพื่อแสดงผลภายในแอป
-        </p>
+          {/* Account */}
+          <div className="rounded-2xl p-4 flex items-center gap-3" style={{ border: "1px solid var(--wt-border)", background: "var(--wt-card)" }}>
+            <div className="flex-1 min-w-0">
+              <p style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--wt-text)" }}>บัญชี</p>
+              <p className="truncate" style={{ fontSize: "0.78rem", color: "var(--wt-muted)" }}>{user?.email ?? "—"}</p>
+            </div>
+            <button onClick={() => signOut()}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl shrink-0 transition-colors"
+              style={{ border: "1px solid #fecdd3", color: "#e11d48", fontSize: "0.82rem", fontWeight: 800, background: "transparent" }}
+              onMouseEnter={e => (e.currentTarget.style.background = "rgba(244,63,94,0.08)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+              <LogOut size={15} /> ออกจากระบบ
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

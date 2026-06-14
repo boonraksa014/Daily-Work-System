@@ -1,11 +1,12 @@
 "use client";
 
 import { createContext, useContext, useEffect, useRef, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
-import { useLocalStorage } from "@/hooks/useLocalStorage";
 import type { Task } from "@/components/KanbanBoard";
 import type { LogEntry } from "@/components/DailyLog";
 import type { Category, AppSettings } from "@/types";
 import { makeId } from "@/lib/id";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/lib/auth";
 import { INITIAL_TASKS, INITIAL_LOGS, INITIAL_CATEGORIES, INITIAL_SETTINGS } from "@/data/seed";
 
 export interface BackupData {
@@ -20,17 +21,13 @@ interface DataContextValue {
   setTasks: Dispatch<SetStateAction<Task[]>>;
   logEntries: LogEntry[];
   setLogEntries: Dispatch<SetStateAction<LogEntry[]>>;
-  /** ลบงานพร้อม toast ให้กดเลิกทำได้ */
   removeTask: (id: string) => void;
-  /** ลบรายการบันทึกพร้อม toast ให้กดเลิกทำได้ */
   removeEntry: (id: string) => void;
   categories: Category[];
   addCategory: (data: Omit<Category, "id">) => void;
   updateCategory: (id: string, data: Omit<Category, "id">) => void;
   removeCategory: (id: string) => void;
-  /** เปลี่ยนชื่อแท็กในทุกงาน */
   renameTag: (oldTag: string, newTag: string) => void;
-  /** ลบแท็กออกจากทุกงาน */
   removeTag: (tag: string) => void;
   settings: AppSettings;
   updateSettings: (patch: Partial<AppSettings>) => void;
@@ -41,21 +38,68 @@ interface DataContextValue {
 
 const DataContext = createContext<DataContextValue | null>(null);
 
-/**
- * แหล่งข้อมูลกลาง (tasks + logs) เก็บใน localStorage และแชร์ทุกหน้า.
- * รอจน mount ก่อนค่อย render เนื้อหา เพื่อกัน hydration mismatch.
- */
+/** อ่านข้อมูลเดิมจาก localStorage (ของเวอร์ชัน single-user) เพื่อย้ายขึ้น cloud ครั้งแรก */
+function readLegacyLocal(): Partial<BackupData> {
+  if (typeof window === "undefined") return {};
+  const get = <T,>(key: string): T | undefined => {
+    try { const raw = window.localStorage.getItem(key); return raw ? (JSON.parse(raw) as T) : undefined; } catch { return undefined; }
+  };
+  return {
+    tasks: get<Task[]>("worktrack.tasks"),
+    logEntries: get<LogEntry[]>("worktrack.logs"),
+    categories: get<Category[]>("worktrack.categories"),
+    settings: get<AppSettings>("worktrack.settings"),
+  };
+}
+
 export function DataProvider({ children }: { children: ReactNode }) {
-  const [tasks, setTasks] = useLocalStorage<Task[]>("worktrack.tasks", INITIAL_TASKS);
-  const [logEntries, setLogEntries] = useLocalStorage<LogEntry[]>("worktrack.logs", INITIAL_LOGS);
-  const [categories, setCategories] = useLocalStorage<Category[]>("worktrack.categories", INITIAL_CATEGORIES);
-  const [settingsRaw, setSettings] = useLocalStorage<AppSettings>("worktrack.settings", INITIAL_SETTINGS);
-  const settings = { ...INITIAL_SETTINGS, ...settingsRaw }; // backfill fields added later
-  const [mounted, setMounted] = useState(false);
+  const { user } = useAuth();
+  const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
+  const [logEntries, setLogEntries] = useState<LogEntry[]>(INITIAL_LOGS);
+  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
+  const [settings, setSettings] = useState<AppSettings>(INITIAL_SETTINGS);
+  const [loaded, setLoaded] = useState(false);
   const [toast, setToast] = useState<{ message: string; onUndo: () => void } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => setMounted(true), []);
+  // Load this user's blob from Supabase (or migrate legacy localStorage on first login)
+  useEffect(() => {
+    if (!supabase || !user) return;
+    let cancelled = false;
+    setLoaded(false);
+    (async () => {
+      const { data } = await supabase!.from("user_data").select("data").eq("user_id", user.id).maybeSingle();
+      if (cancelled) return;
+      const blob = data?.data as Partial<BackupData> | undefined;
+      if (blob) {
+        setTasks(blob.tasks ?? []);
+        setLogEntries(blob.logEntries ?? []);
+        setCategories(blob.categories ?? INITIAL_CATEGORIES);
+        setSettings({ ...INITIAL_SETTINGS, ...(blob.settings ?? {}) });
+      } else {
+        const legacy = readLegacyLocal();
+        setTasks(legacy.tasks ?? []);
+        setLogEntries(legacy.logEntries ?? []);
+        setCategories(legacy.categories ?? INITIAL_CATEGORIES);
+        setSettings({ ...INITIAL_SETTINGS, ...(legacy.settings ?? {}) });
+      }
+      setLoaded(true);
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
+
+  // Persist (debounced) whenever data changes after load
+  useEffect(() => {
+    if (!supabase || !user || !loaded) return;
+    const t = setTimeout(() => {
+      void supabase!.from("user_data").upsert(
+        { user_id: user.id, data: { tasks, logEntries, categories, settings }, updated_at: new Date().toISOString() },
+        { onConflict: "user_id" },
+      );
+    }, 600);
+    return () => clearTimeout(t);
+  }, [tasks, logEntries, categories, settings, loaded, user]);
+
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
   function notify(message: string, onUndo: () => void) {
@@ -70,7 +114,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setTasks(prev => prev.filter(t => t.id !== id));
     notify("ลบงานแล้ว", () => { setToast(null); setTasks(prev => prev.some(t => t.id === id) ? prev : [...prev, removed]); });
   }
-
   function removeEntry(id: string) {
     const removed = logEntries.find(e => e.id === id);
     if (!removed) return;
@@ -78,12 +121,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     notify("ลบรายการแล้ว", () => { setToast(null); setLogEntries(prev => prev.some(e => e.id === id) ? prev : [...prev, removed]); });
   }
 
-  function addCategory(data: Omit<Category, "id">) {
-    setCategories(prev => [...prev, { ...data, id: makeId("cat") }]);
-  }
-  function updateCategory(id: string, data: Omit<Category, "id">) {
-    setCategories(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
-  }
+  function addCategory(data: Omit<Category, "id">) { setCategories(prev => [...prev, { ...data, id: makeId("cat") }]); }
+  function updateCategory(id: string, data: Omit<Category, "id">) { setCategories(prev => prev.map(c => c.id === id ? { ...c, ...data } : c)); }
   function removeCategory(id: string) {
     const removed = categories.find(c => c.id === id);
     if (!removed) return;
@@ -94,36 +133,30 @@ export function DataProvider({ children }: { children: ReactNode }) {
   function renameTag(oldTag: string, newTag: string) {
     const next = newTag.trim();
     if (!next || next === oldTag) return;
-    setTasks(prev => prev.map(t => t.tags.includes(oldTag)
-      ? { ...t, tags: Array.from(new Set(t.tags.map(tag => tag === oldTag ? next : tag))) }
-      : t));
+    setTasks(prev => prev.map(t => t.tags.includes(oldTag) ? { ...t, tags: Array.from(new Set(t.tags.map(tag => tag === oldTag ? next : tag))) } : t));
   }
   function removeTag(tag: string) {
     setTasks(prev => prev.map(t => t.tags.includes(tag) ? { ...t, tags: t.tags.filter(x => x !== tag) } : t));
     notify("ลบแท็กแล้ว", () => setToast(null));
   }
 
-  function updateSettings(patch: Partial<AppSettings>) {
-    setSettings(prev => ({ ...INITIAL_SETTINGS, ...prev, ...patch }));
-  }
+  function updateSettings(patch: Partial<AppSettings>) { setSettings(prev => ({ ...INITIAL_SETTINGS, ...prev, ...patch })); }
 
-  function exportData(): BackupData {
-    return { tasks, logEntries, categories, settings };
-  }
+  function exportData(): BackupData { return { tasks, logEntries, categories, settings }; }
   function importData(data: BackupData) {
     if (Array.isArray(data.tasks)) setTasks(data.tasks);
     if (Array.isArray(data.logEntries)) setLogEntries(data.logEntries);
     if (Array.isArray(data.categories)) setCategories(data.categories);
-    if (data.settings) setSettings(data.settings);
+    if (data.settings) setSettings({ ...INITIAL_SETTINGS, ...data.settings });
   }
   function resetData() {
-    setTasks(INITIAL_TASKS);
-    setLogEntries(INITIAL_LOGS);
+    setTasks([]);
+    setLogEntries([]);
     setCategories(INITIAL_CATEGORIES);
     setSettings(INITIAL_SETTINGS);
   }
 
-  if (!mounted) {
+  if (!loaded) {
     return <div style={{ height: "100vh", background: "var(--wt-page)" }} aria-hidden />;
   }
 
