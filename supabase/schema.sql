@@ -26,3 +26,18 @@ create policy "own row update" on public.user_data
 drop policy if exists "own row delete" on public.user_data;
 create policy "own row delete" on public.user_data
   for delete using (auth.uid() = user_id);
+
+-- ───────────────────────────────────────────────────────────────
+-- สิทธิ์ (Role): เก็บใน app_metadata ของ auth.users ("user" | "admin")
+--   • ผู้ใช้แก้ค่านี้เองไม่ได้ (แก้ได้ผ่าน service role เท่านั้น)
+--   • ใช้ขยาย role/permission อื่นในอนาคตได้ (เพิ่มคีย์ใน app_metadata)
+--
+-- ตั้งผู้ดูแลระบบคนแรก: สร้างบัญชีก่อน (Authentication > Users > Add user)
+-- แล้วรันคำสั่งนี้โดยเปลี่ยนอีเมลเป็นของแอดมิน:
+--
+--   update auth.users
+--   set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role":"admin"}'::jsonb
+--   where email = 'admin@example.com';
+--
+-- หลังจากนั้นแอดมินสร้าง/จัดการบัญชีอื่นได้จากในแอป (ตั้งค่า > ผู้ใช้งาน)
+-- ───────────────────────────────────────────────────────────────

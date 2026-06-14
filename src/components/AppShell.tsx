@@ -9,6 +9,7 @@ import {
   Sun, Moon, Menu, X, Settings, ChevronDown
 } from "lucide-react";
 import { useData } from "@/lib/store";
+import { useAuth } from "@/lib/auth";
 import { Logo } from "@/components/Logo";
 
 const NAV_ITEMS = [
@@ -26,11 +27,15 @@ const SETTINGS_ITEMS = [
   { href: "/settings/data",       label: "ข้อมูล",   emoji: "💾" },
 ];
 
+const ADMIN_SETTINGS_ITEM = { href: "/settings/users", label: "ผู้ใช้งาน", emoji: "👥" };
+
 const SETTINGS_GRADIENT = "linear-gradient(135deg, #475569, #94a3b8)";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { tasks, settings } = useData();
+  const { isAdmin } = useAuth();
+  const settingsItems = isAdmin ? [...SETTINGS_ITEMS, ADMIN_SETTINGS_ITEM] : SETTINGS_ITEMS;
   const { resolvedTheme, setTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -38,7 +43,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isDark = resolvedTheme === "dark";
   const onSettings = pathname.startsWith("/settings");
   const settingsExpanded = settingsOpen || onSettings;
-  const activeSettings = SETTINGS_ITEMS.find(s => pathname.startsWith(s.href));
+  const activeSettings = settingsItems.find(s => pathname.startsWith(s.href));
   const currentNav = onSettings
     ? { label: `ตั้งค่า · ${activeSettings?.label ?? ""}`, icon: <Settings size={17} />, gradient: SETTINGS_GRADIENT }
     : (NAV_ITEMS.find(n => n.href === pathname) ?? NAV_ITEMS[0]);
@@ -101,7 +106,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </button>
             {settingsExpanded && (
               <div className="mt-1 space-y-1" style={{ paddingLeft: 14 }}>
-                {SETTINGS_ITEMS.map(s => {
+                {settingsItems.map(s => {
                   const active = s.href === pathname;
                   return (
                     <Link key={s.href} href={s.href} onClick={() => setSidebarOpen(false)}

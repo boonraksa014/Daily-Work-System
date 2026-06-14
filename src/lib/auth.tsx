@@ -4,12 +4,21 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
+export type Role = "admin" | "user";
+
+function roleOf(user: User | null): Role {
+  return (user?.app_metadata?.role as Role) === "admin" ? "admin" : "user";
+}
+
 interface AuthContextValue {
   user: User | null;
+  role: Role;
+  isAdmin: boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  /** access token ปัจจุบัน (ใช้เรียก API ฝั่งเซิร์ฟเวอร์) */
+  getToken: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -35,17 +44,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error: error?.message ?? null };
   }
-  async function signUp(email: string, password: string) {
-    if (!supabase) return { error: "ยังไม่ได้ตั้งค่า Supabase" };
-    const { error } = await supabase.auth.signUp({ email, password });
-    return { error: error?.message ?? null };
-  }
-  async function signOut() {
-    await supabase?.auth.signOut();
+  async function signOut() { await supabase?.auth.signOut(); }
+  async function getToken() {
+    if (!supabase) return null;
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token ?? null;
   }
 
+  const role = roleOf(user);
+
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, role, isAdmin: role === "admin", loading, signIn, signOut, getToken }}>
       {children}
     </AuthContext.Provider>
   );
