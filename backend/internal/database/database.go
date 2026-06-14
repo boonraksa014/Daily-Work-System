@@ -29,6 +29,9 @@ func New(ctx context.Context, connURL string) (*pgxpool.Pool, error) {
 	cfg.MaxConns = 10
 	cfg.MaxConnLifetime = time.Hour
 	cfg.MaxConnIdleTime = 30 * time.Minute
+	// QueryExecModeExec = extended protocol แบบไม่ cache prepared statement
+	// ทำให้ใช้ได้กับ Supabase connection pooler (transaction mode/PgBouncer) โดยไม่ error
+	cfg.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeExec
 
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
