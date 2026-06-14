@@ -22,6 +22,7 @@ type logDTO struct {
 }
 
 type logInput struct {
+	ID         string  `json:"id"`
 	Date       string  `json:"date"`
 	Title      string  `json:"title"`
 	Note       *string `json:"note"`
@@ -75,6 +76,9 @@ func (h *Handler) CreateLog(c *fiber.Ctx) error {
 	}
 
 	dto, err := h.insertOrUpdateLog(c, uid, in, "")
+	if err == pgx.ErrNoRows {
+		return fiber.NewError(fiber.StatusConflict, "id ซ้ำกับข้อมูลของผู้ใช้อื่น")
+	}
 	if err != nil {
 		return err
 	}
@@ -119,10 +123,14 @@ func (h *Handler) insertOrUpdateLog(c *fiber.Ctx, uid string, in logInput, id st
 		var row pgx.Row
 		if id == "" {
 			row = tx.QueryRow(c.Context(), `
-				insert into public.log_entries (user_id, entry_date, title, note, hours, category_id, done)
-				values ($1,$2,$3,$4,$5,$6,$7)
+				insert into public.log_entries (id, user_id, entry_date, title, note, hours, category_id, done)
+				values ($1,$2,$3,$4,$5,$6,$7,$8)
+				on conflict (id) do update set
+					entry_date=excluded.entry_date, title=excluded.title, note=excluded.note,
+					hours=excluded.hours, category_id=excluded.category_id, done=excluded.done
+				where public.log_entries.user_id = excluded.user_id
 				returning id, entry_date, title, note, hours::double precision, category_id, done`,
-				uid, in.Date, in.Title, in.Note, in.Hours, in.CategoryID, in.Done)
+				ensureID(in.ID), uid, in.Date, in.Title, in.Note, in.Hours, in.CategoryID, in.Done)
 		} else {
 			row = tx.QueryRow(c.Context(), `
 				update public.log_entries

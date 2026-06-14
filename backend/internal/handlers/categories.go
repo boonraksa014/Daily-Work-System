@@ -17,6 +17,7 @@ type categoryDTO struct {
 }
 
 type categoryInput struct {
+	ID       string `json:"id"`
 	Name     string `json:"name"`
 	Emoji    string `json:"emoji"`
 	Color    string `json:"color"`
@@ -78,12 +79,18 @@ func (h *Handler) CreateCategory(c *fiber.Ctx) error {
 	var dto categoryDTO
 	err := database.WithUser(c.Context(), h.DB, uid, func(tx pgx.Tx) error {
 		row := tx.QueryRow(c.Context(), `
-			insert into public.categories (user_id, name, emoji, color, is_active)
-			values ($1,$2,$3,$4,$5)
+			insert into public.categories (id, user_id, name, emoji, color, is_active)
+			values ($1,$2,$3,$4,$5,$6)
+			on conflict (id) do update set
+				name=excluded.name, emoji=excluded.emoji, color=excluded.color, is_active=excluded.is_active
+			where public.categories.user_id = excluded.user_id
 			returning id, name, emoji, color, is_active`,
-			uid, in.Name, in.Emoji, in.Color, activeOrTrue(in.IsActive))
+			ensureID(in.ID), uid, in.Name, in.Emoji, in.Color, activeOrTrue(in.IsActive))
 		return row.Scan(&dto.ID, &dto.Name, &dto.Emoji, &dto.Color, &dto.IsActive)
 	})
+	if err == pgx.ErrNoRows {
+		return fiber.NewError(fiber.StatusConflict, "id ซ้ำกับข้อมูลของผู้ใช้อื่น")
+	}
 	if err != nil {
 		return err
 	}

@@ -5,7 +5,7 @@ import type { Task, Priority, Status } from "@/components/KanbanBoard";
 import type { LogEntry } from "@/components/DailyLog";
 import type { Category, AppSettings, Tag } from "@/types";
 import { makeId } from "@/lib/id";
-import { supabase } from "@/lib/supabase";
+import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { INITIAL_CATEGORIES, INITIAL_SETTINGS } from "@/data/seed";
 
@@ -42,59 +42,83 @@ interface DataContextValue {
 
 const DataContext = createContext<DataContextValue | null>(null);
 
-// ── row ↔ app mappers ───────────────────────────────────────────
-/* eslint-disable @typescript-eslint/no-explicit-any */
-function rowToTask(r: any): Task {
-  return {
-    id: r.id, title: r.title, description: r.description ?? undefined,
-    priority: r.priority as Priority, status: r.status as Status,
-    tags: r.tags ?? [], createdAt: (r.created_at ?? "").slice(0, 10),
-    dueDate: r.due_date ?? undefined,
-  };
-}
-function taskToRow(t: Task, userId: string) {
-  return { id: t.id, user_id: userId, title: t.title, description: t.description ?? null, priority: t.priority, status: t.status, tags: t.tags, due_date: t.dueDate ?? null };
-}
-function rowToCategory(r: any): Category {
-  return { id: r.id, name: r.name, emoji: r.emoji, color: r.color, isActive: r.is_active ?? true };
-}
-function rowToTag(r: any): Tag { return { id: r.id, name: r.name, isActive: r.is_active ?? true }; }
-function tagToRow(t: Tag, userId: string) { return { id: t.id, user_id: userId, name: t.name, is_active: t.isActive }; }
-function categoryToRow(c: Category, userId: string, sort: number) {
-  return { id: c.id, user_id: userId, name: c.name, emoji: c.emoji, color: c.color, sort_order: sort, is_active: c.isActive };
-}
-function rowToEntry(r: any, catNameById: Map<string, string>): LogEntry {
-  return {
-    id: r.id, date: r.entry_date, title: r.title, note: r.note ?? undefined,
-    hours: Number(r.hours), done: r.done,
-    category: r.category_id ? (catNameById.get(r.category_id) ?? "") : "",
-  };
-}
-function entryToRow(e: LogEntry, userId: string, catIdByName: Map<string, string>) {
-  return { id: e.id, user_id: userId, entry_date: e.date, title: e.title, note: e.note ?? null, hours: e.hours, category_id: catIdByName.get(e.category) ?? null, done: e.done };
-}
-/* eslint-enable @typescript-eslint/no-explicit-any */
+// ── รูปแบบที่ backend ส่งกลับ ───────────────────────────────────
+interface ApiTask { id: string; title: string; description: string | null; priority: Priority; status: Status; tags: string[] | null; dueDate: string | null; createdAt: string }
+interface ApiCategory { id: string; name: string; emoji: string; color: string; isActive: boolean }
+interface ApiTag { id: string; name: string; isActive: boolean }
+interface ApiLog { id: string; date: string; title: string; note: string | null; hours: number; categoryId: string | null; category: string; done: boolean }
+interface ApiProfile { displayName: string; role: string; avatarColor: string; defaultView: string }
 
-/** sync collection ปัจจุบันกับ snapshot ล่าสุด: upsert ที่เปลี่ยน + soft-delete ที่หายไป */
+// ── mappers: api → app ───────────────────────────────────────────
+function taskFromApi(r: ApiTask): Task {
+  return { id: r.id, title: r.title, description: r.description ?? undefined, priority: r.priority, status: r.status, tags: r.tags ?? [], createdAt: r.createdAt, dueDate: r.dueDate ?? undefined };
+}
+function categoryFromApi(r: ApiCategory): Category {
+  return { id: r.id, name: r.name, emoji: r.emoji, color: r.color, isActive: r.isActive };
+}
+function tagFromApi(r: ApiTag): Tag {
+  return { id: r.id, name: r.name, isActive: r.isActive };
+}
+function entryFromApi(r: ApiLog): LogEntry {
+  return { id: r.id, date: r.date, title: r.title, note: r.note ?? undefined, hours: r.hours, category: r.category, done: r.done };
+}
+
+// ── bodies: app → api (ใช้สร้าง snapshot สำหรับ diff ด้วย) ───────
+function taskBody(t: Task): Record<string, unknown> {
+  return { id: t.id, title: t.title, description: t.description ?? null, priority: t.priority, status: t.status, tags: t.tags, dueDate: t.dueDate ?? null };
+}
+function categoryBody(c: Category): Record<string, unknown> {
+  return { id: c.id, name: c.name, emoji: c.emoji, color: c.color, isActive: c.isActive };
+}
+function tagBody(t: Tag): Record<string, unknown> {
+  return { id: t.id, name: t.name, isActive: t.isActive };
+}
+function entryBody(e: LogEntry, catIdByName: Map<string, string>): Record<string, unknown> {
+  return { id: e.id, date: e.date, title: e.title, note: e.note ?? null, hours: e.hours, categoryId: catIdByName.get(e.category) ?? null, done: e.done };
+}
+function profileBody(s: AppSettings): Record<string, unknown> {
+  return { displayName: s.displayName, role: s.role, avatarColor: s.avatarColor, defaultView: s.defaultView };
+}
+
+/** sync collection ปัจจุบันกับ snapshot ล่าสุด: POST ที่ใหม่ + PATCH ที่เปลี่ยน + DELETE ที่หายไป */
 async function syncCollection<T extends { id: string }>(
-  table: string, current: T[], snapshot: Map<string, string>, toRow: (item: T) => Record<string, unknown>, userId: string,
+  token: string | null,
+  path: string,
+  current: T[],
+  snapshot: Map<string, string>,
+  toBody: (item: T) => Record<string, unknown>,
 ) {
-  if (!supabase) return;
   const curIds = new Set(current.map(i => i.id));
-  const upserts = current.map(toRow).filter((row, idx) => {
-    const key = JSON.stringify(row);
-    return snapshot.get(current[idx].id) !== key;
-  });
-  const deletedIds = [...snapshot.keys()].filter(id => !curIds.has(id));
-  if (upserts.length) await supabase.from(table).upsert(upserts);
-  if (deletedIds.length) await supabase.from(table).update({ deleted_at: new Date().toISOString(), deleted_by_id: userId }).in("id", deletedIds);
-  // refresh snapshot
-  snapshot.clear();
-  for (const item of current) snapshot.set(item.id, JSON.stringify(toRow(item)));
+  for (const item of current) {
+    const body = toBody(item);
+    const key = JSON.stringify(body);
+    const prev = snapshot.get(item.id);
+    if (prev === key) continue;
+    try {
+      if (prev === undefined) {
+        await apiFetch(token, path, { method: "POST", body: key });
+      } else {
+        await apiFetch(token, `${path}/${item.id}`, { method: "PATCH", body: key });
+      }
+      snapshot.set(item.id, key);
+    } catch (e) {
+      console.error("sync error", path, item.id, e);
+    }
+  }
+  for (const id of [...snapshot.keys()]) {
+    if (!curIds.has(id)) {
+      try {
+        await apiFetch(token, `${path}/${id}`, { method: "DELETE" });
+        snapshot.delete(id);
+      } catch (e) {
+        console.error("delete error", path, id, e);
+      }
+    }
+  }
 }
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, getToken } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -104,89 +128,110 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<{ message: string; onUndo: () => void } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // snapshots ของสิ่งที่ sync ขึ้น server ล่าสุด (ไว้ทำ diff)
+  // snapshots ของสิ่งที่อยู่บน backend ล่าสุด (ไว้ทำ diff)
   const taskSnap = useRef(new Map<string, string>());
   const entrySnap = useRef(new Map<string, string>());
   const catSnap = useRef(new Map<string, string>());
   const tagSnap = useRef(new Map<string, string>());
+  const settingsSnap = useRef<string>("");
 
   // ── load ของ user นี้ ──
   useEffect(() => {
-    if (!supabase || !user) return;
+    if (!user) return;
     let cancelled = false;
     setLoaded(false);
     (async () => {
-      const uid = user.id;
-      const [profileRes, catRes, tagRes, taskRes, entryRes] = await Promise.all([
-        supabase!.from("profiles").select("*").eq("id", uid).maybeSingle(),
-        supabase!.from("categories").select("*").is("deleted_at", null).eq("user_id", uid).order("sort_order"),
-        supabase!.from("tags").select("*").is("deleted_at", null).eq("user_id", uid).order("name"),
-        supabase!.from("tasks").select("*").is("deleted_at", null).eq("user_id", uid).order("sort_order"),
-        supabase!.from("log_entries").select("*").is("deleted_at", null).eq("user_id", uid).order("entry_date", { ascending: false }),
-      ]);
-      if (cancelled) return;
+      try {
+        const token = await getToken();
+        const [profile, tasksRes, logsRes, catsRes, tagsRes] = await Promise.all([
+          apiFetch<ApiProfile>(token, "/profile"),
+          apiFetch<{ tasks: ApiTask[] }>(token, "/tasks"),
+          apiFetch<{ logs: ApiLog[] }>(token, "/logs"),
+          apiFetch<{ categories: ApiCategory[] }>(token, "/categories"),
+          apiFetch<{ tags: ApiTag[] }>(token, "/tags"),
+        ]);
+        if (cancelled) return;
 
-      // settings (profile)
-      const p = profileRes.data;
-      setSettings({
-        displayName: p?.display_name ?? INITIAL_SETTINGS.displayName,
-        role: p?.job_title ?? "",
-        avatarColor: p?.avatar_color ?? INITIAL_SETTINGS.avatarColor,
-        defaultView: (p?.default_view ?? INITIAL_SETTINGS.defaultView) as AppSettings["defaultView"],
-      });
+        // settings (profile)
+        const s: AppSettings = {
+          displayName: profile?.displayName || INITIAL_SETTINGS.displayName,
+          role: profile?.role ?? "",
+          avatarColor: profile?.avatarColor || INITIAL_SETTINGS.avatarColor,
+          defaultView: (profile?.defaultView || INITIAL_SETTINGS.defaultView) as AppSettings["defaultView"],
+        };
+        setSettings(s);
+        settingsSnap.current = JSON.stringify(profileBody(s));
 
-      // categories (seed ครั้งแรกถ้ายังไม่มี)
-      let cats: Category[] = (catRes.data ?? []).map(rowToCategory);
-      if (cats.length === 0) cats = INITIAL_CATEGORIES.map(c => ({ ...c, id: makeId("cat") }));
-      const catNameById = new Map(cats.map(c => [c.id, c.name]));
-      const tks = (taskRes.data ?? []).map(rowToTask);
-      const ents = (entryRes.data ?? []).map((r: unknown) => rowToEntry(r, catNameById));
+        // categories (seed ครั้งแรกถ้ายังไม่มี)
+        const serverCats = (catsRes?.categories ?? []).map(categoryFromApi);
+        let cats = serverCats;
+        if (cats.length === 0) cats = INITIAL_CATEGORIES.map(c => ({ ...c, id: makeId() }));
 
-      // tags master: ที่มีอยู่ + auto-import แท็กที่ใช้ในงานแต่ยังไม่อยู่ใน master
-      const tagDefs: Tag[] = (tagRes.data ?? []).map(rowToTag);
-      const knownNames = new Set(tagDefs.map(t => t.name));
-      for (const name of new Set(tks.flatMap(t => t.tags))) {
-        if (!knownNames.has(name)) tagDefs.push({ id: makeId("tag"), name, isActive: true });
+        const tks = (tasksRes?.tasks ?? []).map(taskFromApi);
+        const ents = (logsRes?.logs ?? []).map(entryFromApi);
+
+        // tags master + auto-import แท็กที่ใช้ในงานแต่ยังไม่อยู่ใน master
+        const tagDefs: Tag[] = (tagsRes?.tags ?? []).map(tagFromApi);
+        const known = new Set(tagDefs.map(t => t.name));
+        for (const name of new Set(tks.flatMap(t => t.tags))) {
+          if (name && !known.has(name)) {
+            tagDefs.push({ id: makeId(), name, isActive: true });
+            known.add(name);
+          }
+        }
+
+        setCategories(cats);
+        setTagDefs(tagDefs);
+        setTasks(tks);
+        setLogEntries(ents);
+
+        // snapshot = สิ่งที่อยู่บน backend แล้วเท่านั้น (cats ที่ seed / tags ที่ import ใหม่ ไม่อยู่ใน snapshot → effect จะ POST ให้)
+        const catIdByName = new Map(cats.map(c => [c.name, c.id]));
+        catSnap.current = new Map(serverCats.map(c => [c.id, JSON.stringify(categoryBody(c))]));
+        tagSnap.current = new Map((tagsRes?.tags ?? []).map(r => [r.id, JSON.stringify(tagBody(tagFromApi(r)))]));
+        taskSnap.current = new Map(tks.map(t => [t.id, JSON.stringify(taskBody(t))]));
+        entrySnap.current = new Map(ents.map(e => [e.id, JSON.stringify(entryBody(e, catIdByName))]));
+
+        setLoaded(true);
+      } catch (e) {
+        console.error("load failed", e);
+        if (!cancelled) setLoaded(true); // ไม่ให้ค้างหน้าโหลด
       }
-
-      setCategories(cats);
-      setTagDefs(tagDefs);
-      setTasks(tks);
-      setLogEntries(ents);
-
-      // ตั้ง snapshot = สิ่งที่อยู่บน server แล้ว (cats/tags ที่ seed/import ใหม่ถือว่ายังไม่ขึ้น → ให้ effect บันทึก)
-      tagSnap.current = new Map((tagRes.data ?? []).map((r: { id: string }) => [r.id, JSON.stringify(tagToRow(rowToTag(r), uid))]));
-      taskSnap.current = new Map(tks.map(t => [t.id, JSON.stringify(taskToRow(t, uid))]));
-      entrySnap.current = new Map(ents.map(e => [e.id, JSON.stringify(entryToRow(e, uid, new Map(cats.map(c => [c.name, c.id]))))]));
-      catSnap.current = new Map((catRes.data ?? []).map((r: { id: string }, i: number) => [r.id, JSON.stringify(categoryToRow(rowToCategory(r), uid, i))]));
-
-      setLoaded(true);
     })();
     return () => { cancelled = true; };
-  }, [user]);
+  }, [user, getToken]);
 
-  // ── sync (debounced) ──
+  // ── sync ข้อมูลหลัก (debounced) ──
   useEffect(() => {
-    if (!supabase || !user || !loaded) return;
-    const uid = user.id;
-    const t = setTimeout(() => {
-      void syncCollection("categories", categories, catSnap.current, (c) => categoryToRow(c, uid, categories.indexOf(c)), uid);
-      void syncCollection("tags", tags, tagSnap.current, (t) => tagToRow(t, uid), uid);
-      void syncCollection("tasks", tasks, taskSnap.current, (t) => taskToRow(t, uid), uid);
+    if (!user || !loaded) return;
+    const t = setTimeout(async () => {
+      const token = await getToken();
+      // categories ก่อน เพื่อให้ category มีอยู่ก่อน log อ้างถึง (FK)
+      await syncCollection(token, "/categories", categories, catSnap.current, categoryBody);
+      await syncCollection(token, "/tags", tags, tagSnap.current, tagBody);
+      await syncCollection(token, "/tasks", tasks, taskSnap.current, taskBody);
       const catIdByName = new Map(categories.map(c => [c.name, c.id]));
-      void syncCollection("log_entries", logEntries, entrySnap.current, (e) => entryToRow(e, uid, catIdByName), uid);
+      await syncCollection(token, "/logs", logEntries, entrySnap.current, (e) => entryBody(e, catIdByName));
     }, 600);
     return () => clearTimeout(t);
-  }, [tasks, logEntries, categories, tags, loaded, user]);
+  }, [tasks, logEntries, categories, tags, loaded, user, getToken]);
 
   // ── sync profile/settings (debounced) ──
   useEffect(() => {
-    if (!supabase || !user || !loaded) return;
-    const t = setTimeout(() => {
-      void supabase!.from("profiles").upsert({ id: user.id, display_name: settings.displayName, job_title: settings.role, avatar_color: settings.avatarColor, default_view: settings.defaultView });
+    if (!user || !loaded) return;
+    const body = JSON.stringify(profileBody(settings));
+    if (settingsSnap.current === body) return;
+    const t = setTimeout(async () => {
+      try {
+        const token = await getToken();
+        await apiFetch(token, "/profile", { method: "PUT", body });
+        settingsSnap.current = body;
+      } catch (e) {
+        console.error("profile sync error", e);
+      }
     }, 600);
     return () => clearTimeout(t);
-  }, [settings, loaded, user]);
+  }, [settings, loaded, user, getToken]);
 
   useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
@@ -209,7 +254,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     notify("ลบรายการแล้ว", () => { setToast(null); setLogEntries(prev => prev.some(e => e.id === id) ? prev : [...prev, removed]); });
   }
 
-  function addCategory(data: Omit<Category, "id">) { setCategories(prev => [...prev, { ...data, id: makeId("cat") }]); }
+  function addCategory(data: Omit<Category, "id">) { setCategories(prev => [...prev, { ...data, id: makeId() }]); }
   function updateCategory(id: string, data: Omit<Category, "id">) { setCategories(prev => prev.map(c => c.id === id ? { ...c, ...data } : c)); }
   function removeCategory(id: string) {
     const removed = categories.find(c => c.id === id);
@@ -221,7 +266,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   function addTag(name: string) {
     const n = name.trim();
     if (!n) return;
-    setTagDefs(prev => prev.some(t => t.name === n) ? prev : [...prev, { id: makeId("tag"), name: n, isActive: true }]);
+    setTagDefs(prev => prev.some(t => t.name === n) ? prev : [...prev, { id: makeId(), name: n, isActive: true }]);
   }
   function setTagActive(name: string, active: boolean) {
     setTagDefs(prev => prev.map(t => t.name === name ? { ...t, isActive: active } : t));
@@ -231,7 +276,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (!next || next === oldTag) return;
     setTagDefs(prev => prev
       .map(t => t.name === oldTag ? { ...t, name: next } : t)
-      .filter((t, i, arr) => arr.findIndex(x => x.name === t.name) === i)); // merge if name already exists
+      .filter((t, i, arr) => arr.findIndex(x => x.name === t.name) === i)); // merge ถ้าชื่อซ้ำ
     setTasks(prev => prev.map(t => t.tags.includes(oldTag) ? { ...t, tags: Array.from(new Set(t.tags.map(tag => tag === oldTag ? next : tag))) } : t));
   }
   function removeTag(tag: string) {
@@ -250,16 +295,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   function exportData(): BackupData { return { tasks, logEntries, categories, tags, settings }; }
   function importData(data: BackupData) {
-    if (Array.isArray(data.categories)) setCategories(data.categories);
-    if (Array.isArray(data.tags)) setTagDefs(data.tags);
-    if (Array.isArray(data.tasks)) setTasks(data.tasks);
-    if (Array.isArray(data.logEntries)) setLogEntries(data.logEntries);
+    // gen id ใหม่ทั้งหมด (= import แทนที่ของเดิม) — diff-sync จะลบของเก่าบน server แล้ว POST ของใหม่
+    if (Array.isArray(data.categories)) setCategories(data.categories.map(c => ({ ...c, id: makeId() })));
+    if (Array.isArray(data.tags)) setTagDefs(data.tags.map(t => ({ ...t, id: makeId() })));
+    if (Array.isArray(data.tasks)) setTasks(data.tasks.map(t => ({ ...t, id: makeId() })));
+    if (Array.isArray(data.logEntries)) setLogEntries(data.logEntries.map(e => ({ ...e, id: makeId() })));
     if (data.settings) setSettings({ ...INITIAL_SETTINGS, ...data.settings });
   }
   function resetData() {
     setTasks([]);
     setLogEntries([]);
-    setCategories(INITIAL_CATEGORIES.map(c => ({ ...c, id: makeId("cat") })));
+    setCategories(INITIAL_CATEGORIES.map(c => ({ ...c, id: makeId() })));
     setTagDefs([]);
     setSettings(INITIAL_SETTINGS);
   }

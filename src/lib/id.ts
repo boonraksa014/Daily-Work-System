@@ -1,8 +1,13 @@
-/** สร้าง id ที่ไม่ซ้ำ ใช้ crypto.randomUUID ถ้ามี ไม่งั้น fallback */
-export function makeId(prefix: string) {
-  const uuid =
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-  return `${prefix}-${uuid}`;
+/** สร้าง id แบบ UUID (รองรับคอลัมน์ uuid ของ Postgres) — prefix ไม่ใช้แล้วแต่คงไว้เพื่อ compatibility */
+export function makeId(_prefix?: string): string {
+  void _prefix;
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  // fallback: RFC4122-ish v4
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
 }

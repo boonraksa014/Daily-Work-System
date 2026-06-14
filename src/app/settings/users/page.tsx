@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Plus, Trash2, ShieldCheck, User as UserIcon, ToggleLeft, ToggleRight } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { apiFetch } from "@/lib/api";
 
 interface ManagedUser {
   id: string;
@@ -29,29 +30,25 @@ export default function UsersSettingsPage() {
   const [role, setRole] = useState<"admin" | "user">("user");
   const [creating, setCreating] = useState(false);
 
-  const api = useCallback(async (method: string, body?: unknown) => {
+  const call = useCallback(async (method: string, path: string, body?: unknown) => {
     const token = await getToken();
-    const res = await fetch("/api/admin/users", {
+    return apiFetch<{ users?: ManagedUser[] }>(token, `/admin/users${path}`, {
       method,
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token ?? ""}` },
       body: body ? JSON.stringify(body) : undefined,
     });
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(json.error ?? "เกิดข้อผิดพลาด");
-    return json;
   }, [getToken]);
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      const json = await api("GET");
-      setUsers(json.users ?? []);
+      const json = await call("GET", "");
+      setUsers(json?.users ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "โหลดรายชื่อไม่สำเร็จ");
     } finally {
       setLoading(false);
     }
-  }, [api]);
+  }, [call]);
 
   useEffect(() => { if (isAdmin) load(); else setLoading(false); }, [isAdmin, load]);
 
@@ -59,7 +56,7 @@ export default function UsersSettingsPage() {
     e.preventDefault();
     setCreating(true); setError(null);
     try {
-      await api("POST", { email: email.trim(), password, role });
+      await call("POST", "", { email: email.trim(), password, role });
       setEmail(""); setPassword(""); setRole("user");
       await load();
     } catch (e) {
@@ -71,20 +68,20 @@ export default function UsersSettingsPage() {
 
   async function setUserRole(id: string, next: "admin" | "user") {
     setError(null);
-    try { await api("PATCH", { id, role: next }); await load(); }
+    try { await call("PATCH", `/${id}`, { role: next }); await load(); }
     catch (e) { setError(e instanceof Error ? e.message : "เปลี่ยนสิทธิ์ไม่สำเร็จ"); }
   }
 
   async function setUserActive(id: string, next: boolean) {
     setError(null);
-    try { await api("PATCH", { id, active: next }); await load(); }
+    try { await call("PATCH", `/${id}`, { active: next }); await load(); }
     catch (e) { setError(e instanceof Error ? e.message : "เปลี่ยนสถานะไม่สำเร็จ"); }
   }
 
   async function removeUser(id: string, mail: string) {
     if (!confirm(`ลบบัญชี ${mail}? ข้อมูลทั้งหมดของผู้ใช้นี้จะถูกลบด้วย`)) return;
     setError(null);
-    try { await api("DELETE", { id }); await load(); }
+    try { await call("DELETE", `/${id}`); await load(); }
     catch (e) { setError(e instanceof Error ? e.message : "ลบบัญชีไม่สำเร็จ"); }
   }
 

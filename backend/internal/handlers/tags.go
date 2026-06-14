@@ -15,6 +15,7 @@ type tagDTO struct {
 }
 
 type tagInput struct {
+	ID       string `json:"id"`
 	Name     string `json:"name"`
 	IsActive *bool  `json:"isActive"`
 }
@@ -56,19 +57,20 @@ func (h *Handler) CreateTag(c *fiber.Ctx) error {
 
 	var dto tagDTO
 	err := database.WithUser(c.Context(), h.DB, uid, func(tx pgx.Tx) error {
-		// กันชื่อซ้ำ (unique partial index user_id+name where deleted_at is null)
+		// on conflict (id) → idempotent ต่อการ retry; ชื่อซ้ำจะชน unique index (user_id,name)
 		row := tx.QueryRow(c.Context(), `
-			insert into public.tags (user_id, name, is_active)
-			values ($1,$2,$3)
-			on conflict do nothing
+			insert into public.tags (id, user_id, name, is_active)
+			values ($1,$2,$3,$4)
+			on conflict (id) do update set name=excluded.name, is_active=excluded.is_active
+			where public.tags.user_id = excluded.user_id
 			returning id, name, is_active`,
-			uid, in.Name, activeOrTrue(in.IsActive))
-		if err := row.Scan(&dto.ID, &dto.Name, &dto.IsActive); err != nil {
-			return err
-		}
-		return nil
+			ensureID(in.ID), uid, in.Name, activeOrTrue(in.IsActive))
+		return row.Scan(&dto.ID, &dto.Name, &dto.IsActive)
 	})
 	if err == pgx.ErrNoRows {
+		return fiber.NewError(fiber.StatusConflict, "id ซ้ำกับข้อมูลของผู้ใช้อื่น")
+	}
+	if isUniqueViolation(err) {
 		return fiber.NewError(fiber.StatusConflict, "มีแท็กนี้อยู่แล้ว")
 	}
 	if err != nil {

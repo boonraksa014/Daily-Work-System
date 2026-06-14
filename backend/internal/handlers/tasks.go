@@ -22,6 +22,7 @@ type taskDTO struct {
 }
 
 type taskInput struct {
+	ID          string   `json:"id"`
 	Title       string   `json:"title"`
 	Description *string  `json:"description"`
 	Priority    string   `json:"priority"`
@@ -91,10 +92,14 @@ func (h *Handler) CreateTask(c *fiber.Ctx) error {
 			created time.Time
 		)
 		row := tx.QueryRow(c.Context(), `
-			insert into public.tasks (user_id, title, description, priority, status, tags, due_date)
-			values ($1,$2,$3,$4,$5,$6,$7)
+			insert into public.tasks (id, user_id, title, description, priority, status, tags, due_date)
+			values ($1,$2,$3,$4,$5,$6,$7,$8)
+			on conflict (id) do update set
+				title=excluded.title, description=excluded.description, priority=excluded.priority,
+				status=excluded.status, tags=excluded.tags, due_date=excluded.due_date
+			where public.tasks.user_id = excluded.user_id
 			returning id, title, description, priority, status, tags, due_date, created_at`,
-			uid, in.Title, in.Description, in.Priority, in.Status, in.Tags, in.DueDate)
+			ensureID(in.ID), uid, in.Title, in.Description, in.Priority, in.Status, in.Tags, in.DueDate)
 		if err := row.Scan(&dto.ID, &dto.Title, &dto.Description, &dto.Priority, &dto.Status, &dto.Tags, &due, &created); err != nil {
 			return err
 		}
@@ -102,6 +107,9 @@ func (h *Handler) CreateTask(c *fiber.Ctx) error {
 		dto.CreatedAt = dateStr(created)
 		return nil
 	})
+	if err == pgx.ErrNoRows {
+		return fiber.NewError(fiber.StatusConflict, "id ซ้ำกับข้อมูลของผู้ใช้อื่น")
+	}
 	if err != nil {
 		return err
 	}
