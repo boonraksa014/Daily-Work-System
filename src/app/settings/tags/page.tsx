@@ -1,15 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Trash2, Check, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Check, X } from "lucide-react";
 import { useData } from "@/lib/store";
 
 export default function TagsSettingsPage() {
-  const { tasks, renameTag, removeTag } = useData();
+  const { tasks, tags: tagDefs, addTag, renameTag, removeTag } = useData();
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  const [newTag, setNewTag] = useState("");
 
-  const tags = Array.from(new Set(tasks.flatMap(t => t.tags))).sort();
+  // master ∪ ที่ใช้ในงาน
+  const names = Array.from(new Set([...tagDefs.map(t => t.name), ...tasks.flatMap(t => t.tags)])).sort();
   const usageOf = (tag: string) => tasks.filter(t => t.tags.includes(tag)).length;
 
   function startEdit(tag: string) { setEditing(tag); setDraft(tag); }
@@ -18,22 +20,46 @@ export default function TagsSettingsPage() {
     if (next && next !== tag) renameTag(tag, next);
     setEditing(null);
   }
+  function create(e: React.FormEvent) {
+    e.preventDefault();
+    const n = newTag.trim();
+    if (!n) return;
+    addTag(n);
+    setNewTag("");
+  }
+
+  const exists = names.some(n => n.toLowerCase() === newTag.trim().toLowerCase());
 
   return (
     <div className="mx-auto" style={{ maxWidth: 720 }}>
       <div className="bg-white rounded-2xl p-5" style={{ border: "2px solid var(--wt-border)", boxShadow: "0 4px 16px rgba(124,58,237,0.08)" }}>
         <h2 style={{ fontSize: "1.05rem", fontWeight: 800, color: "var(--wt-text)" }}>แท็ก</h2>
-        <p style={{ fontSize: "0.78rem", color: "var(--wt-muted)" }}>แท็กทั้งหมดที่ใช้ในงาน Kanban — เปลี่ยนชื่อหรือลบจะมีผลกับทุกงาน</p>
+        <p style={{ fontSize: "0.78rem", color: "var(--wt-muted)" }}>จัดการแท็กสำหรับงาน Kanban — เพิ่ม เปลี่ยนชื่อ หรือลบ (มีผลกับทุกงาน)</p>
+
+        {/* Create */}
+        <form onSubmit={create} className="flex items-center gap-2 mt-4">
+          <input value={newTag} onChange={e => setNewTag(e.target.value)} placeholder="ชื่อแท็กใหม่..."
+            aria-label="ชื่อแท็กใหม่"
+            className="flex-1 px-4 py-2.5 rounded-xl outline-none transition-colors"
+            style={{ border: "2px solid var(--wt-border)", background: "var(--wt-soft)", color: "var(--wt-text)", fontFamily: "inherit", fontSize: "0.88rem" }}
+            onFocus={e => (e.target.style.borderColor = "#a78bfa")} onBlur={e => (e.target.style.borderColor = "var(--wt-border)")} />
+          <button type="submit" disabled={!newTag.trim() || exists}
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl transition-opacity"
+            style={{ background: "linear-gradient(135deg, #7c3aed, #a855f7)", color: "#fff", fontSize: "0.85rem", fontWeight: 800, border: "none", opacity: (!newTag.trim() || exists) ? 0.5 : 1, cursor: (!newTag.trim() || exists) ? "not-allowed" : "pointer" }}>
+            <Plus size={15} /> เพิ่ม
+          </button>
+        </form>
+        {exists && newTag.trim() && <p style={{ fontSize: "0.72rem", color: "#e11d48", marginTop: 4 }}>มีแท็กนี้อยู่แล้ว</p>}
 
         <div className="space-y-2 mt-4">
-          {tags.length === 0 && (
+          {names.length === 0 && (
             <div className="text-center py-10" style={{ color: "var(--wt-muted)" }}>
               <p style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--wt-text)" }}>ยังไม่มีแท็ก</p>
-              <p style={{ fontSize: "0.8rem", marginTop: 2 }}>เพิ่มแท็กได้ตอนสร้าง/แก้ไขงานในหน้า Kanban</p>
+              <p style={{ fontSize: "0.8rem", marginTop: 2 }}>พิมพ์ชื่อด้านบนเพื่อเพิ่มแท็กแรก</p>
             </div>
           )}
 
-          {tags.map(tag => (
+          {names.map(tag => (
             <div key={tag} className="group flex items-center gap-3 rounded-2xl p-3"
               style={{ border: "1px solid var(--wt-border)", background: "var(--wt-card)" }}>
               {editing === tag ? (

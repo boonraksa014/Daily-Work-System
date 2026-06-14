@@ -9,6 +9,12 @@ export interface Category {
   color: string; // hex ใช้เป็นสี accent (dot/กราฟ) และ tint พื้นชิป
 }
 
+/** แท็ก (master) — จัดการได้ที่ ตั้งค่า → แท็ก */
+export interface Tag {
+  id: string;
+  name: string;
+}
+
 /** ค่าตั้งค่าทั่วไป + โปรไฟล์ผู้ใช้ */
 export interface AppSettings {
   displayName: string;

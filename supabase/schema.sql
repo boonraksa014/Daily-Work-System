@@ -80,6 +80,24 @@ drop trigger if exists touch_categories on public.categories;
 create trigger touch_categories before update on public.categories
   for each row execute function public.tg_touch_audit();
 
+-- ══════════════════════════ tags (master) ══════════════════════════
+create table if not exists public.tags (
+  id            uuid primary key default gen_random_uuid(),
+  user_id       uuid not null references auth.users (id) on delete cascade,
+  name          text not null,
+  created_at    timestamptz not null default now(),
+  created_by_id uuid default auth.uid() references auth.users (id) on delete set null,
+  updated_at    timestamptz not null default now(),
+  updated_by_id uuid references auth.users (id) on delete set null,
+  deleted_at    timestamptz,
+  deleted_by_id uuid references auth.users (id) on delete set null
+);
+create unique index if not exists tags_user_name_uidx on public.tags (user_id, name) where deleted_at is null;
+
+drop trigger if exists touch_tags on public.tags;
+create trigger touch_tags before update on public.tags
+  for each row execute function public.tg_touch_audit();
+
 -- ══════════════════════════ tasks ══════════════════════════
 create table if not exists public.tasks (
   id            uuid primary key default gen_random_uuid(),
@@ -139,6 +157,7 @@ alter default privileges in schema public grant all on sequences to anon, authen
 -- ══════════════════════════ Row Level Security ══════════════════════════
 alter table public.profiles    enable row level security;
 alter table public.categories  enable row level security;
+alter table public.tags        enable row level security;
 alter table public.tasks       enable row level security;
 alter table public.log_entries enable row level security;
 
@@ -148,6 +167,10 @@ create policy profiles_rw on public.profiles
 
 drop policy if exists categories_rw on public.categories;
 create policy categories_rw on public.categories
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists tags_rw on public.tags;
+create policy tags_rw on public.tags
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 drop policy if exists tasks_rw on public.tasks;

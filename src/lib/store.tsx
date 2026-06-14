@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
 import type { Task, Priority, Status } from "@/components/KanbanBoard";
 import type { LogEntry } from "@/components/DailyLog";
-import type { Category, AppSettings } from "@/types";
+import type { Category, AppSettings, Tag } from "@/types";
 import { makeId } from "@/lib/id";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
@@ -13,6 +13,7 @@ export interface BackupData {
   tasks: Task[];
   logEntries: LogEntry[];
   categories: Category[];
+  tags: Tag[];
   settings: AppSettings;
 }
 
@@ -27,6 +28,8 @@ interface DataContextValue {
   addCategory: (data: Omit<Category, "id">) => void;
   updateCategory: (id: string, data: Omit<Category, "id">) => void;
   removeCategory: (id: string) => void;
+  tags: Tag[];
+  addTag: (name: string) => void;
   renameTag: (oldTag: string, newTag: string) => void;
   removeTag: (tag: string) => void;
   settings: AppSettings;
@@ -54,6 +57,8 @@ function taskToRow(t: Task, userId: string) {
 function rowToCategory(r: any): Category {
   return { id: r.id, name: r.name, emoji: r.emoji, color: r.color };
 }
+function rowToTag(r: any): Tag { return { id: r.id, name: r.name }; }
+function tagToRow(t: Tag, userId: string) { return { id: t.id, user_id: userId, name: t.name }; }
 function categoryToRow(c: Category, userId: string, sort: number) {
   return { id: c.id, user_id: userId, name: c.name, emoji: c.emoji, color: c.color, sort_order: sort };
 }
@@ -92,6 +97,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [tags, setTagDefs] = useState<Tag[]>([]);
   const [settings, setSettings] = useState<AppSettings>(INITIAL_SETTINGS);
   const [loaded, setLoaded] = useState(false);
   const [toast, setToast] = useState<{ message: string; onUndo: () => void } | null>(null);
@@ -101,6 +107,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const taskSnap = useRef(new Map<string, string>());
   const entrySnap = useRef(new Map<string, string>());
   const catSnap = useRef(new Map<string, string>());
+  const tagSnap = useRef(new Map<string, string>());
 
   // ── load ของ user นี้ ──
   useEffect(() => {
@@ -109,9 +116,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setLoaded(false);
     (async () => {
       const uid = user.id;
-      const [profileRes, catRes, taskRes, entryRes] = await Promise.all([
+      const [profileRes, catRes, tagRes, taskRes, entryRes] = await Promise.all([
         supabase!.from("profiles").select("*").eq("id", uid).maybeSingle(),
         supabase!.from("categories").select("*").is("deleted_at", null).eq("user_id", uid).order("sort_order"),
+        supabase!.from("tags").select("*").is("deleted_at", null).eq("user_id", uid).order("name"),
         supabase!.from("tasks").select("*").is("deleted_at", null).eq("user_id", uid).order("sort_order"),
         supabase!.from("log_entries").select("*").is("deleted_at", null).eq("user_id", uid).order("entry_date", { ascending: false }),
       ]);
@@ -133,11 +141,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const tks = (taskRes.data ?? []).map(rowToTask);
       const ents = (entryRes.data ?? []).map((r: unknown) => rowToEntry(r, catNameById));
 
+      // tags master: ที่มีอยู่ + auto-import แท็กที่ใช้ในงานแต่ยังไม่อยู่ใน master
+      const tagDefs: Tag[] = (tagRes.data ?? []).map(rowToTag);
+      const knownNames = new Set(tagDefs.map(t => t.name));
+      for (const name of new Set(tks.flatMap(t => t.tags))) {
+        if (!knownNames.has(name)) tagDefs.push({ id: makeId("tag"), name });
+      }
+
       setCategories(cats);
+      setTagDefs(tagDefs);
       setTasks(tks);
       setLogEntries(ents);
 
-      // ตั้ง snapshot = สิ่งที่อยู่บน server แล้ว (cats ที่ seed ใหม่ถือว่ายังไม่ขึ้น → ให้ effect บันทึก)
+      // ตั้ง snapshot = สิ่งที่อยู่บน server แล้ว (cats/tags ที่ seed/import ใหม่ถือว่ายังไม่ขึ้น → ให้ effect บันทึก)
+      tagSnap.current = new Map((tagRes.data ?? []).map((r: { id: string }) => [r.id, JSON.stringify(tagToRow(rowToTag(r), uid))]));
       taskSnap.current = new Map(tks.map(t => [t.id, JSON.stringify(taskToRow(t, uid))]));
       entrySnap.current = new Map(ents.map(e => [e.id, JSON.stringify(entryToRow(e, uid, new Map(cats.map(c => [c.name, c.id]))))]));
       catSnap.current = new Map((catRes.data ?? []).map((r: { id: string }, i: number) => [r.id, JSON.stringify(categoryToRow(rowToCategory(r), uid, i))]));
@@ -153,12 +170,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const uid = user.id;
     const t = setTimeout(() => {
       void syncCollection("categories", categories, catSnap.current, (c) => categoryToRow(c, uid, categories.indexOf(c)), uid);
+      void syncCollection("tags", tags, tagSnap.current, (t) => tagToRow(t, uid), uid);
       void syncCollection("tasks", tasks, taskSnap.current, (t) => taskToRow(t, uid), uid);
       const catIdByName = new Map(categories.map(c => [c.name, c.id]));
       void syncCollection("log_entries", logEntries, entrySnap.current, (e) => entryToRow(e, uid, catIdByName), uid);
     }, 600);
     return () => clearTimeout(t);
-  }, [tasks, logEntries, categories, loaded, user]);
+  }, [tasks, logEntries, categories, tags, loaded, user]);
 
   // ── sync profile/settings (debounced) ──
   useEffect(() => {
@@ -199,21 +217,37 @@ export function DataProvider({ children }: { children: ReactNode }) {
     notify("ลบหมวดหมู่แล้ว", () => { setToast(null); setCategories(prev => prev.some(c => c.id === id) ? prev : [...prev, removed]); });
   }
 
+  function addTag(name: string) {
+    const n = name.trim();
+    if (!n) return;
+    setTagDefs(prev => prev.some(t => t.name === n) ? prev : [...prev, { id: makeId("tag"), name: n }]);
+  }
   function renameTag(oldTag: string, newTag: string) {
     const next = newTag.trim();
     if (!next || next === oldTag) return;
+    setTagDefs(prev => prev
+      .map(t => t.name === oldTag ? { ...t, name: next } : t)
+      .filter((t, i, arr) => arr.findIndex(x => x.name === t.name) === i)); // merge if name already exists
     setTasks(prev => prev.map(t => t.tags.includes(oldTag) ? { ...t, tags: Array.from(new Set(t.tags.map(tag => tag === oldTag ? next : tag))) } : t));
   }
   function removeTag(tag: string) {
+    const def = tags.find(t => t.name === tag);
+    const affectedIds = tasks.filter(t => t.tags.includes(tag)).map(t => t.id);
+    setTagDefs(prev => prev.filter(t => t.name !== tag));
     setTasks(prev => prev.map(t => t.tags.includes(tag) ? { ...t, tags: t.tags.filter(x => x !== tag) } : t));
-    notify("ลบแท็กแล้ว", () => setToast(null));
+    notify("ลบแท็กแล้ว", () => {
+      setToast(null);
+      if (def) setTagDefs(prev => prev.some(t => t.name === tag) ? prev : [...prev, def]);
+      setTasks(prev => prev.map(t => affectedIds.includes(t.id) && !t.tags.includes(tag) ? { ...t, tags: [...t.tags, tag] } : t));
+    });
   }
 
   function updateSettings(patch: Partial<AppSettings>) { setSettings(prev => ({ ...INITIAL_SETTINGS, ...prev, ...patch })); }
 
-  function exportData(): BackupData { return { tasks, logEntries, categories, settings }; }
+  function exportData(): BackupData { return { tasks, logEntries, categories, tags, settings }; }
   function importData(data: BackupData) {
     if (Array.isArray(data.categories)) setCategories(data.categories);
+    if (Array.isArray(data.tags)) setTagDefs(data.tags);
     if (Array.isArray(data.tasks)) setTasks(data.tasks);
     if (Array.isArray(data.logEntries)) setLogEntries(data.logEntries);
     if (data.settings) setSettings({ ...INITIAL_SETTINGS, ...data.settings });
@@ -222,6 +256,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setTasks([]);
     setLogEntries([]);
     setCategories(INITIAL_CATEGORIES.map(c => ({ ...c, id: makeId("cat") })));
+    setTagDefs([]);
     setSettings(INITIAL_SETTINGS);
   }
 
@@ -230,7 +265,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <DataContext.Provider value={{ tasks, setTasks, logEntries, setLogEntries, removeTask, removeEntry, categories, addCategory, updateCategory, removeCategory, renameTag, removeTag, settings, updateSettings, exportData, importData, resetData }}>
+    <DataContext.Provider value={{ tasks, setTasks, logEntries, setLogEntries, removeTask, removeEntry, categories, addCategory, updateCategory, removeCategory, tags, addTag, renameTag, removeTag, settings, updateSettings, exportData, importData, resetData }}>
       {children}
       {toast && (
         <div role="status" aria-live="polite"

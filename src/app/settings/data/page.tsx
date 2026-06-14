@@ -5,7 +5,7 @@ import { Download, Upload, RotateCcw } from "lucide-react";
 import { useData, type BackupData } from "@/lib/store";
 
 export default function DataSettingsPage() {
-  const { tasks, logEntries, categories, exportData, importData, resetData } = useData();
+  const { tasks, logEntries, categories, tags, exportData, importData, resetData } = useData();
   const fileRef = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
@@ -35,6 +35,7 @@ export default function DataSettingsPage() {
         tasks: parsed.tasks,
         logEntries: parsed.logEntries,
         categories: parsed.categories ?? categories,
+        tags: parsed.tags ?? tags,
         settings: parsed.settings ?? exportData().settings,
       });
       setMsg({ kind: "ok", text: "นำเข้าข้อมูลเรียบร้อย" });
