@@ -52,8 +52,16 @@ func main() {
 	h := handlers.New(pool)
 	users := handlers.NewUsers(supaadmin.New(cfg.SupabaseURL, cfg.ServiceRoleKey))
 
+	// JWKS สำหรับ verify access token แบบ asymmetric (ES256/RS256)
+	var keys *mw.KeyCache
+	if cfg.SupabaseURL != "" {
+		keys = mw.NewKeyCache(cfg.SupabaseURL + "/auth/v1/.well-known/jwks.json")
+	} else {
+		keys = mw.NewKeyCache("")
+	}
+
 	// ทุก route ใต้ /api/v1 ต้องผ่าน auth
-	api := app.Group("/api/v1", mw.Auth(cfg.JWTSecret))
+	api := app.Group("/api/v1", mw.Auth(cfg.JWTSecret, keys))
 
 	api.Get("/profile", h.GetProfile)
 	api.Put("/profile", h.UpdateProfile)

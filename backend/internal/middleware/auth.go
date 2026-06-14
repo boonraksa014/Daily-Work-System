@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -21,10 +22,11 @@ const (
 	LocalRole   = "role" // "admin" | "user" (จาก app_metadata.role)
 )
 
-// Auth ตรวจสอบ Bearer token (HS256 ด้วย Supabase JWT Secret)
-// แล้วเก็บ userID / email / role ไว้ใน c.Locals
-func Auth(secret string) fiber.Handler {
-	key := []byte(secret)
+// Auth ตรวจสอบ Bearer token ของ Supabase แล้วเก็บ userID / email / role ไว้ใน c.Locals
+//   - asymmetric (ES256/RS256): verify ด้วย public key จาก JWKS (โปรเจกต์ใหม่)
+//   - HS256: verify ด้วย JWT secret (โปรเจกต์เดิม) — ใช้เมื่อตั้ง secret ไว้
+func Auth(secret string, keys *KeyCache) fiber.Handler {
+	hsKey := []byte(secret)
 	return func(c *fiber.Ctx) error {
 		header := c.Get("Authorization")
 		if len(header) < 8 || !strings.EqualFold(header[:7], "bearer ") {
@@ -34,10 +36,21 @@ func Auth(secret string) fiber.Handler {
 
 		claims := &supabaseClaims{}
 		token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (interface{}, error) {
-			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, jwt.ErrSignatureInvalid
+			switch t.Method.(type) {
+			case *jwt.SigningMethodECDSA, *jwt.SigningMethodRSA:
+				if !keys.Enabled() {
+					return nil, fmt.Errorf("ยังไม่ได้ตั้งค่า SUPABASE_URL สำหรับ JWKS")
+				}
+				kid, _ := t.Header["kid"].(string)
+				return keys.Get(kid)
+			case *jwt.SigningMethodHMAC:
+				if secret == "" {
+					return nil, fmt.Errorf("ยังไม่ได้ตั้งค่า SUPABASE_JWT_SECRET")
+				}
+				return hsKey, nil
+			default:
+				return nil, fmt.Errorf("วิธีเซ็น token ไม่รองรับ: %v", t.Header["alg"])
 			}
-			return key, nil
 		})
 		if err != nil || !token.Valid {
 			return fiber.NewError(fiber.StatusUnauthorized, "เซสชันไม่ถูกต้องหรือหมดอายุ")

@@ -32,11 +32,14 @@ func Load() *Config {
 	if c.DatabaseURL == "" {
 		log.Fatal("config: DATABASE_URL is required")
 	}
-	if c.JWTSecret == "" {
-		log.Fatal("config: SUPABASE_JWT_SECRET is required (Settings > API > JWT Secret)")
+	// ต้องมีวิธี verify token อย่างน้อยหนึ่งอย่าง:
+	//   - SUPABASE_URL → ใช้ JWKS verify token แบบ asymmetric (ES256/RS256) [โปรเจกต์ใหม่]
+	//   - SUPABASE_JWT_SECRET → verify token แบบ HS256 [โปรเจกต์เดิม]
+	if c.SupabaseURL == "" && c.JWTSecret == "" {
+		log.Fatal("config: ต้องมี SUPABASE_URL (สำหรับ JWKS) หรือ SUPABASE_JWT_SECRET อย่างน้อยหนึ่งอย่าง")
 	}
-	if c.SupabaseURL == "" || c.ServiceRoleKey == "" {
-		log.Println("config: warning — SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY ว่าง, endpoint จัดการผู้ใช้ (admin) จะใช้งานไม่ได้")
+	if c.ServiceRoleKey == "" {
+		log.Println("config: warning — SUPABASE_SERVICE_ROLE_KEY ว่าง, endpoint จัดการผู้ใช้ (admin) จะใช้งานไม่ได้")
 	}
 	return c
 }
