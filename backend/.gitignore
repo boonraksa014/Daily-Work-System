@@ -1,0 +1,12 @@
+# env (มีคีย์ลับ — ห้าม commit)
+.env
+.env.local
+
+# build output
+/bin/
+/server
+/server.exe
+*.exe
+
+# go
+vendor/
