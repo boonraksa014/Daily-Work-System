@@ -95,8 +95,8 @@ function TagMultiSelect({ options, value, onChange }: { options: string[]; value
       </button>
 
       {open && (
-        <div role="listbox" className="absolute z-10 left-0 right-0 mt-1 rounded-xl overflow-hidden"
-          style={{ background: "var(--wt-card)", border: "2px solid var(--wt-border)", boxShadow: "0 12px 30px rgba(0,0,0,0.18)" }}>
+        <div role="listbox" className="mt-1 rounded-xl overflow-hidden"
+          style={{ background: "var(--wt-soft)", border: "2px solid var(--wt-border)" }}>
           {all.length > 6 && (
             <div className="p-2" style={{ borderBottom: "1px solid var(--wt-border)" }}>
               <input value={filter} onChange={e => setFilter(e.target.value)} placeholder="ค้นหาแท็ก..." autoFocus
@@ -165,8 +165,8 @@ function TaskModal({ status, initial, availableTags, onSubmit, onClose }: TaskMo
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(45,31,110,0.4)", backdropFilter: "blur(6px)" }} onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" style={{ border: "1px solid var(--wt-border)" }} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={isEdit ? "แก้ไขงาน" : "เพิ่มงานใหม่"}>
-        <div className="px-6 pt-5 pb-4 flex items-center justify-between" style={{ background: col.tint, borderBottom: `1px solid ${col.line}` }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col" style={{ border: "1px solid var(--wt-border)", maxHeight: "90vh" }} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={isEdit ? "แก้ไขงาน" : "เพิ่มงานใหม่"}>
+        <div className="px-6 pt-5 pb-4 flex items-center justify-between shrink-0" style={{ background: col.tint, borderBottom: `1px solid ${col.line}` }}>
           <div className="flex items-center gap-2">
             <span style={{ fontSize: "1.1rem" }}>{col.emoji}</span>
             <div>
@@ -181,7 +181,8 @@ function TaskModal({ status, initial, availableTags, onSubmit, onClose }: TaskMo
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
+          <div className="p-6 space-y-4 overflow-y-auto flex-1">
           <div>
             <label htmlFor="task-title" style={labelStyle}>ชื่องาน *</label>
             <input id="task-title" className="w-full mt-1 px-4 py-3 rounded-xl outline-none transition-colors"
@@ -245,7 +246,8 @@ function TaskModal({ status, initial, availableTags, onSubmit, onClose }: TaskMo
             )}
           </div>
 
-          <div className="flex gap-3 pt-2">
+          </div>
+          <div className="flex gap-3 p-4 shrink-0" style={{ borderTop: "1px solid var(--wt-border)", background: "var(--wt-card)" }}>
             <button type="button" onClick={onClose} className="flex-1 py-3 rounded-xl transition-colors"
               style={{ border: "2px solid var(--wt-border)", color: "var(--wt-muted)", fontSize: "0.9rem", fontWeight: 700, background: "transparent" }}
               onMouseEnter={e => (e.currentTarget.style.background = "var(--wt-soft2)")}
