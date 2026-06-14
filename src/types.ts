@@ -7,12 +7,14 @@ export interface Category {
   name: string;
   emoji: string;
   color: string; // hex ใช้เป็นสี accent (dot/กราฟ) และ tint พื้นชิป
+  isActive: boolean;
 }
 
 /** แท็ก (master) — จัดการได้ที่ ตั้งค่า → แท็ก */
 export interface Tag {
   id: string;
   name: string;
+  isActive: boolean;
 }
 
 /** ค่าตั้งค่าทั่วไป + โปรไฟล์ผู้ใช้ */

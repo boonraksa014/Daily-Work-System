@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Trash2, ShieldCheck, User as UserIcon } from "lucide-react";
+import { Plus, Trash2, ShieldCheck, User as UserIcon, ToggleLeft, ToggleRight } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
 interface ManagedUser {
   id: string;
   email: string;
   role: "admin" | "user";
+  active: boolean;
   createdAt: string;
   lastSignInAt: string | null;
 }
@@ -74,6 +75,12 @@ export default function UsersSettingsPage() {
     catch (e) { setError(e instanceof Error ? e.message : "เปลี่ยนสิทธิ์ไม่สำเร็จ"); }
   }
 
+  async function setUserActive(id: string, next: boolean) {
+    setError(null);
+    try { await api("PATCH", { id, active: next }); await load(); }
+    catch (e) { setError(e instanceof Error ? e.message : "เปลี่ยนสถานะไม่สำเร็จ"); }
+  }
+
   async function removeUser(id: string, mail: string) {
     if (!confirm(`ลบบัญชี ${mail}? ข้อมูลทั้งหมดของผู้ใช้นี้จะถูกลบด้วย`)) return;
     setError(null);
@@ -136,17 +143,25 @@ export default function UsersSettingsPage() {
             const self = u.id === user?.id;
             const admin = u.role === "admin";
             return (
-              <div key={u.id} className="flex items-center gap-3 rounded-2xl p-3" style={{ border: "1px solid var(--wt-border)", background: "var(--wt-card)" }}>
+              <div key={u.id} className="flex items-center gap-3 rounded-2xl p-3" style={{ border: "1px solid var(--wt-border)", background: "var(--wt-card)", opacity: u.active ? 1 : 0.55 }}>
                 <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl shrink-0"
                   style={{ background: admin ? "var(--wt-tint-orange)" : "var(--wt-soft2)", color: admin ? "var(--wt-c-prog-ink)" : "var(--wt-muted)" }}>
                   {admin ? <ShieldCheck size={17} /> : <UserIcon size={17} />}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="truncate" style={{ fontSize: "0.86rem", fontWeight: 700, color: "var(--wt-text)" }}>
+                  <p className="truncate flex items-center gap-2" style={{ fontSize: "0.86rem", fontWeight: 700, color: "var(--wt-text)" }}>
                     {u.email} {self && <span style={{ fontSize: "0.72rem", color: "var(--wt-muted)", fontWeight: 600 }}>(คุณ)</span>}
+                    {!u.active && <span className="rounded-full px-2 py-0.5 shrink-0" style={{ fontSize: "0.64rem", fontWeight: 800, background: "#fff1f2", color: "#e11d48" }}>ปิดใช้งาน</span>}
                   </p>
                   <p style={{ fontSize: "0.72rem", color: "var(--wt-muted)" }}>{admin ? "แอดมิน" : "ผู้ใช้"} · {u.lastSignInAt ? "เคยเข้าใช้" : "ยังไม่เคยเข้า"}</p>
                 </div>
+                <button onClick={() => setUserActive(u.id, !u.active)} disabled={self}
+                  aria-label={u.active ? `ปิดใช้งาน ${u.email}` : `เปิดใช้งาน ${u.email}`} title={self ? "เปลี่ยนสถานะตัวเองไม่ได้" : (u.active ? "ปิดใช้งาน" : "เปิดใช้งาน")}
+                  className="p-2 rounded-xl transition-colors shrink-0" style={{ color: u.active ? "#7c3aed" : "var(--wt-muted)", opacity: self ? 0.3 : 1, cursor: self ? "not-allowed" : "pointer" }}
+                  onMouseEnter={e => { if (!self) e.currentTarget.style.background = "var(--wt-soft2)"; }}
+                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                  {u.active ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                </button>
                 <select value={u.role} onChange={e => setUserRole(u.id, e.target.value as "admin" | "user")} disabled={self}
                   aria-label={`สิทธิ์ของ ${u.email}`}
                   className="px-2.5 py-1.5 rounded-lg outline-none shrink-0" style={{ ...inputStyle, fontSize: "0.78rem", opacity: self ? 0.5 : 1 }}>

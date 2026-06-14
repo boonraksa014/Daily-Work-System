@@ -18,7 +18,7 @@ export interface LogEntry {
 
 /** หา category ตามชื่อ; ถ้าถูกลบไปแล้วคืนค่า fallback กลางๆ */
 function findCat(categories: Category[], name: string): Category {
-  return categories.find(c => c.name === name) ?? { id: "", name, emoji: "📌", color: "#94a3b8" };
+  return categories.find(c => c.name === name) ?? { id: "", name, emoji: "📌", color: "#94a3b8", isActive: true };
 }
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
@@ -51,7 +51,9 @@ function EntryForm({ date, initial, categories, onSubmit, onCancel }: EntryFormP
   const [title, setTitle] = useState(initial?.title ?? "");
   const [note, setNote] = useState(initial?.note ?? "");
   const [hours, setHours] = useState(initial?.hours ?? 1);
-  const [category, setCategory] = useState(initial?.category ?? categories[0]?.name ?? "");
+  const [category, setCategory] = useState(initial?.category ?? categories.find(c => c.isActive)?.name ?? categories[0]?.name ?? "");
+  // แสดงเฉพาะหมวดที่เปิดใช้งาน — แต่ยังคงโชว์หมวดที่เลือกอยู่แม้ถูกปิด (กรณีแก้รายการเก่า)
+  const pickable = categories.filter(c => c.isActive || c.name === category);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -90,7 +92,7 @@ function EntryForm({ date, initial, categories, onSubmit, onCancel }: EntryFormP
         <div>
           <p style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--wt-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>หมวดหมู่</p>
           <div className="flex flex-wrap gap-2">
-            {categories.map(c => {
+            {pickable.map(c => {
               const active = category === c.name;
               return (
                 <button key={c.id} type="button" onClick={() => setCategory(c.name)}

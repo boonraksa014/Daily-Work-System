@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Pencil, Trash2, X } from "lucide-react";
+import { Plus, Pencil, Trash2, X, ToggleLeft, ToggleRight } from "lucide-react";
 import { useData } from "@/lib/store";
 import type { Category } from "@/types";
 
@@ -24,7 +24,7 @@ function CategoryForm({ initial, onSave, onCancel }: CategoryFormProps) {
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    onSave({ name: name.trim(), emoji: emoji.trim() || "🏷️", color });
+    onSave({ name: name.trim(), emoji: emoji.trim() || "🏷️", color, isActive: initial?.isActive ?? true });
   }
 
   return (
@@ -100,17 +100,27 @@ export default function CategoriesSettingsPage() {
                 onCancel={() => setEditingId(null)} />
             ) : (
               <div key={cat.id} className="group flex items-center gap-3 rounded-2xl p-3"
-                style={{ border: "1px solid var(--wt-border)", background: "var(--wt-card)" }}>
+                style={{ border: "1px solid var(--wt-border)", background: "var(--wt-card)", opacity: cat.isActive ? 1 : 0.55 }}>
                 <span className="inline-flex items-center justify-center rounded-xl shrink-0"
-                  style={{ width: 38, height: 38, fontSize: "1.15rem", background: cat.color + "22" }}>{cat.emoji}</span>
+                  style={{ width: 38, height: 38, fontSize: "1.15rem", background: cat.color + "22", filter: cat.isActive ? "none" : "grayscale(1)" }}>{cat.emoji}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="truncate" style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--wt-text)" }}>{cat.name}</p>
+                  <p className="truncate flex items-center gap-2" style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--wt-text)" }}>
+                    {cat.name}
+                    {!cat.isActive && <span className="rounded-full px-2 py-0.5 shrink-0" style={{ fontSize: "0.64rem", fontWeight: 800, background: "var(--wt-soft2)", color: "var(--wt-muted)" }}>ปิดใช้งาน</span>}
+                  </p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="inline-block rounded-full" style={{ width: 10, height: 10, background: cat.color }} />
                     <span style={{ fontSize: "0.72rem", color: "var(--wt-muted)" }}>{cat.color} · ใช้ใน {usageOf(cat.name)} รายการ</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                  <button onClick={() => updateCategory(cat.id, { name: cat.name, emoji: cat.emoji, color: cat.color, isActive: !cat.isActive })}
+                    aria-label={cat.isActive ? `ปิดใช้งาน ${cat.name}` : `เปิดใช้งาน ${cat.name}`} title={cat.isActive ? "ปิดใช้งาน" : "เปิดใช้งาน"}
+                    className="p-2 rounded-xl transition-colors" style={{ color: cat.isActive ? "#7c3aed" : "var(--wt-muted)" }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "var(--wt-soft2)")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                    {cat.isActive ? <ToggleRight size={17} /> : <ToggleLeft size={17} />}
+                  </button>
                   <button onClick={() => { setEditingId(cat.id); setAdding(false); }} aria-label={`แก้ไข ${cat.name}`}
                     className="p-2 rounded-xl transition-colors" style={{ color: "var(--wt-muted)" }}
                     onMouseEnter={e => (e.currentTarget.style.background = "var(--wt-soft2)")}

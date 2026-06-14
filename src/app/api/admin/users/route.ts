@@ -19,8 +19,13 @@ export async function GET(req: NextRequest) {
   if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const { data, error } = await supabaseAdmin!.auth.admin.listUsers({ perPage: 1000 });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const now = Date.now();
   const users = data.users
-    .map(u => ({ id: u.id, email: u.email ?? "", role: (u.app_metadata?.role as Role) ?? "user", createdAt: u.created_at, lastSignInAt: u.last_sign_in_at ?? null }))
+    .map(u => {
+      const bannedUntil = (u as { banned_until?: string | null }).banned_until ?? null;
+      const active = !bannedUntil || new Date(bannedUntil).getTime() <= now;
+      return { id: u.id, email: u.email ?? "", role: (u.app_metadata?.role as Role) ?? "user", active, createdAt: u.created_at, lastSignInAt: u.last_sign_in_at ?? null };
+    })
     .sort((a, b) => a.email.localeCompare(b.email));
   return NextResponse.json({ users });
 }
@@ -43,8 +48,19 @@ export async function PATCH(req: NextRequest) {
   if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const body = await req.json().catch(() => ({}));
   const id = String(body.id ?? "");
-  const role: Role = body.role === "admin" ? "admin" : "user";
   if (!id) return NextResponse.json({ error: "ไม่พบผู้ใช้" }, { status: 400 });
+
+  // เปิด/ปิดการใช้งานบัญชี (ban/unban)
+  if (typeof body.active === "boolean") {
+    if (id === auth.user.id) return NextResponse.json({ error: "ปิดการใช้งานบัญชีตัวเองไม่ได้" }, { status: 400 });
+    const ban_duration = body.active ? "none" : "876000h"; // ~100 ปี = ปิดถาวรจนกว่าจะเปิดใหม่
+    const { error } = await supabaseAdmin!.auth.admin.updateUserById(id, { ban_duration });
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json({ ok: true });
+  }
+
+  // เปลี่ยนสิทธิ์ (role)
+  const role: Role = body.role === "admin" ? "admin" : "user";
   if (id === auth.user.id && role !== "admin") return NextResponse.json({ error: "ถอดสิทธิ์แอดมินของตัวเองไม่ได้" }, { status: 400 });
   const { error } = await supabaseAdmin!.auth.admin.updateUserById(id, { app_metadata: { role } });
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });

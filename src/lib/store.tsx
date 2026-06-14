@@ -30,6 +30,7 @@ interface DataContextValue {
   removeCategory: (id: string) => void;
   tags: Tag[];
   addTag: (name: string) => void;
+  setTagActive: (name: string, active: boolean) => void;
   renameTag: (oldTag: string, newTag: string) => void;
   removeTag: (tag: string) => void;
   settings: AppSettings;
@@ -55,12 +56,12 @@ function taskToRow(t: Task, userId: string) {
   return { id: t.id, user_id: userId, title: t.title, description: t.description ?? null, priority: t.priority, status: t.status, tags: t.tags, due_date: t.dueDate ?? null };
 }
 function rowToCategory(r: any): Category {
-  return { id: r.id, name: r.name, emoji: r.emoji, color: r.color };
+  return { id: r.id, name: r.name, emoji: r.emoji, color: r.color, isActive: r.is_active ?? true };
 }
-function rowToTag(r: any): Tag { return { id: r.id, name: r.name }; }
-function tagToRow(t: Tag, userId: string) { return { id: t.id, user_id: userId, name: t.name }; }
+function rowToTag(r: any): Tag { return { id: r.id, name: r.name, isActive: r.is_active ?? true }; }
+function tagToRow(t: Tag, userId: string) { return { id: t.id, user_id: userId, name: t.name, is_active: t.isActive }; }
 function categoryToRow(c: Category, userId: string, sort: number) {
-  return { id: c.id, user_id: userId, name: c.name, emoji: c.emoji, color: c.color, sort_order: sort };
+  return { id: c.id, user_id: userId, name: c.name, emoji: c.emoji, color: c.color, sort_order: sort, is_active: c.isActive };
 }
 function rowToEntry(r: any, catNameById: Map<string, string>): LogEntry {
   return {
@@ -145,7 +146,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const tagDefs: Tag[] = (tagRes.data ?? []).map(rowToTag);
       const knownNames = new Set(tagDefs.map(t => t.name));
       for (const name of new Set(tks.flatMap(t => t.tags))) {
-        if (!knownNames.has(name)) tagDefs.push({ id: makeId("tag"), name });
+        if (!knownNames.has(name)) tagDefs.push({ id: makeId("tag"), name, isActive: true });
       }
 
       setCategories(cats);
@@ -220,7 +221,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
   function addTag(name: string) {
     const n = name.trim();
     if (!n) return;
-    setTagDefs(prev => prev.some(t => t.name === n) ? prev : [...prev, { id: makeId("tag"), name: n }]);
+    setTagDefs(prev => prev.some(t => t.name === n) ? prev : [...prev, { id: makeId("tag"), name: n, isActive: true }]);
+  }
+  function setTagActive(name: string, active: boolean) {
+    setTagDefs(prev => prev.map(t => t.name === name ? { ...t, isActive: active } : t));
   }
   function renameTag(oldTag: string, newTag: string) {
     const next = newTag.trim();
@@ -265,7 +269,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <DataContext.Provider value={{ tasks, setTasks, logEntries, setLogEntries, removeTask, removeEntry, categories, addCategory, updateCategory, removeCategory, tags, addTag, renameTag, removeTag, settings, updateSettings, exportData, importData, resetData }}>
+    <DataContext.Provider value={{ tasks, setTasks, logEntries, setLogEntries, removeTask, removeEntry, categories, addCategory, updateCategory, removeCategory, tags, addTag, setTagActive, renameTag, removeTag, settings, updateSettings, exportData, importData, resetData }}>
       {children}
       {toast && (
         <div role="status" aria-live="polite"

@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Pencil, Trash2, Check, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Check, X, ToggleLeft, ToggleRight } from "lucide-react";
 import { useData } from "@/lib/store";
 
 export default function TagsSettingsPage() {
-  const { tasks, tags: tagDefs, addTag, renameTag, removeTag } = useData();
+  const { tasks, tags: tagDefs, addTag, setTagActive, renameTag, removeTag } = useData();
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [newTag, setNewTag] = useState("");
@@ -13,6 +13,7 @@ export default function TagsSettingsPage() {
   // master ∪ ที่ใช้ในงาน
   const names = Array.from(new Set([...tagDefs.map(t => t.name), ...tasks.flatMap(t => t.tags)])).sort();
   const usageOf = (tag: string) => tasks.filter(t => t.tags.includes(tag)).length;
+  const isActiveOf = (tag: string) => tagDefs.find(t => t.name === tag)?.isActive ?? true;
 
   function startEdit(tag: string) { setEditing(tag); setDraft(tag); }
   function commitEdit(tag: string) {
@@ -59,9 +60,11 @@ export default function TagsSettingsPage() {
             </div>
           )}
 
-          {names.map(tag => (
+          {names.map(tag => {
+            const active = isActiveOf(tag);
+            return (
             <div key={tag} className="group flex items-center gap-3 rounded-2xl p-3"
-              style={{ border: "1px solid var(--wt-border)", background: "var(--wt-card)" }}>
+              style={{ border: "1px solid var(--wt-border)", background: "var(--wt-card)", opacity: editing === tag || active ? 1 : 0.55 }}>
               {editing === tag ? (
                 <>
                   <input value={draft} onChange={e => setDraft(e.target.value)} autoFocus
@@ -82,8 +85,17 @@ export default function TagsSettingsPage() {
               ) : (
                 <>
                   <span className="rounded-full px-3 py-1" style={{ background: "var(--wt-soft2)", color: "var(--wt-text)", fontSize: "0.82rem", fontWeight: 700 }}>#{tag}</span>
-                  <span className="flex-1" style={{ fontSize: "0.74rem", color: "var(--wt-muted)" }}>ใช้ใน {usageOf(tag)} งาน</span>
+                  <span className="flex-1 flex items-center gap-2" style={{ fontSize: "0.74rem", color: "var(--wt-muted)" }}>
+                    ใช้ใน {usageOf(tag)} งาน
+                    {!active && <span className="rounded-full px-2 py-0.5" style={{ fontSize: "0.64rem", fontWeight: 800, background: "var(--wt-soft2)", color: "var(--wt-muted)" }}>ปิดใช้งาน</span>}
+                  </span>
                   <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                    <button onClick={() => setTagActive(tag, !active)} aria-label={active ? `ปิดใช้งาน ${tag}` : `เปิดใช้งาน ${tag}`} title={active ? "ปิดใช้งาน" : "เปิดใช้งาน"}
+                      className="p-2 rounded-xl" style={{ color: active ? "#7c3aed" : "var(--wt-muted)" }}
+                      onMouseEnter={e => (e.currentTarget.style.background = "var(--wt-soft2)")}
+                      onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                      {active ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
+                    </button>
                     <button onClick={() => startEdit(tag)} aria-label={`เปลี่ยนชื่อ ${tag}`} className="p-2 rounded-xl" style={{ color: "var(--wt-muted)" }}
                       onMouseEnter={e => (e.currentTarget.style.background = "var(--wt-soft2)")}
                       onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
@@ -98,7 +110,8 @@ export default function TagsSettingsPage() {
                 </>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
