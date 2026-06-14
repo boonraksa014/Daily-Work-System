@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { Logo } from "@/components/Logo";
@@ -15,6 +16,7 @@ function Screen({ children }: { children: ReactNode }) {
 
 function LoginScreen() {
   const { signIn } = useAuth();
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -24,8 +26,9 @@ function LoginScreen() {
     e.preventDefault();
     setError(null); setBusy(true);
     const { error } = await signIn(email.trim(), password);
-    setBusy(false);
-    if (error) setError(error);
+    if (error) { setBusy(false); setError(error); return; }
+    // เข้าสู่ระบบสำเร็จ → ไปหน้าแรก (เด้งต่อไปยังหน้าภาพรวม/หน้าเริ่มต้นที่ตั้งไว้)
+    router.replace("/");
   }
 
   const inputStyle: React.CSSProperties = { border: "2px solid var(--wt-border)", background: "var(--wt-soft)", color: "var(--wt-text)", fontFamily: "inherit", fontSize: "0.9rem" };
