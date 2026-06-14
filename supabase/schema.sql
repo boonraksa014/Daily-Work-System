@@ -125,6 +125,14 @@ drop trigger if exists touch_log_entries on public.log_entries;
 create trigger touch_log_entries before update on public.log_entries
   for each row execute function public.tg_touch_audit();
 
+-- ══════════════════════════ Grants ══════════════════════════
+-- ให้สิทธิ์ระดับตารางแก่ role ของ Supabase (ความปลอดภัยระดับแถวคุมด้วย RLS ด้านล่าง)
+grant usage on schema public to anon, authenticated, service_role;
+grant all on all tables in schema public to anon, authenticated, service_role;
+grant all on all sequences in schema public to anon, authenticated, service_role;
+alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
+
 -- ══════════════════════════ Row Level Security ══════════════════════════
 alter table public.profiles    enable row level security;
 alter table public.categories  enable row level security;
