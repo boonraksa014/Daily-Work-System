@@ -2,7 +2,7 @@
 
 REST API ที่เชื่อมกับ Supabase เดิม (Postgres + Auth) เขียนด้วย **Go 1.26 + Fiber v2**
 
-- ตรวจสอบสิทธิ์ด้วย **Supabase access token** (JWT, HS256)
+- ตรวจสอบสิทธิ์ด้วย **Supabase access token** (JWT) — รองรับทั้ง asymmetric (ES256/RS256 ผ่าน JWKS) และ HS256
 - เข้าถึงข้อมูลผ่าน **pgx** ตรงไปยัง Postgres ของ Supabase
 - บังคับให้เห็น/แก้ได้เฉพาะข้อมูลของตัวเอง (กรองด้วย `user_id` ทุก query + ตั้ง `request.jwt.claims` ให้ audit/`auth.uid()` ทำงานถูกต้อง)
 - จัดการผู้ใช้ (เฉพาะแอดมิน) ผ่าน **GoTrue Admin API** ด้วย service role key
@@ -29,8 +29,9 @@ backend/
    - แนะนำใช้ **Connection pooler** (พอร์ต `6543`) และเติม `?sslmode=require` ต่อท้าย
    - ตัวอย่าง: `postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres?sslmode=require`
 
-2. **SUPABASE_JWT_SECRET** — Supabase Dashboard → Project Settings → **API** → JWT Settings → **JWT Secret**
-   - ใช้ตรวจลายเซ็น access token ของผู้ใช้ที่ frontend ส่งมา
+2. **SUPABASE_JWT_SECRET** — *ไม่จำเป็นถ้าโปรเจกต์ใช้ asymmetric signing keys* (ES256/RS256)
+   - backend จะดึง public key จาก `SUPABASE_URL/auth/v1/.well-known/jwks.json` มา verify เอง
+   - ตั้งค่านี้เฉพาะโปรเจกต์เดิมที่ยังเซ็น token แบบ HS256 (Settings → API → JWT Secret)
 
 ## รัน
 
@@ -68,5 +69,5 @@ go build -o server ./cmd/server && ./server   # build แล้วรัน
 ## หมายเหตุ
 
 - โค้ดเชื่อมต่อ Postgres ในฐานะเจ้าของตาราง ซึ่ง **bypass RLS** — ความปลอดภัยจึงบังคับในชั้นโค้ด (กรอง `user_id` ทุก query) โดยมี RLS เป็นแนวกันสำรอง
-- ถ้าโปรเจกต์ Supabase เปลี่ยนไปใช้ **asymmetric JWT signing keys** (ES256/RS256) ต้องเปลี่ยน `middleware/auth.go` ไป verify ด้วย JWKS แทน HS256
+- รองรับทั้ง asymmetric (ES256/RS256 ผ่าน JWKS) และ HS256 อัตโนมัติ — เลือกตาม `alg` ใน token
 - **ยังไม่ได้ต่อ frontend เข้ากับ backend นี้** — ปัจจุบัน frontend ยังคุย Supabase ตรงๆ การสลับให้ frontend เรียก API นี้เป็นงานขั้นถัดไป
