@@ -10,13 +10,13 @@
 
 -- ── helper: เช็คแอดมินจาก JWT (ใช้ใน RLS ได้โดยไม่ recursion) ──
 create or replace function public.is_admin()
-returns boolean language sql stable as $$
+returns boolean language sql stable security invoker set search_path = '' as $$
   select coalesce((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin', false);
 $$;
 
 -- ── trigger: เซ็ต updated_at / updated_by_id อัตโนมัติทุกครั้งที่ UPDATE ──
 create or replace function public.tg_touch_audit()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql set search_path = '' as $$
 begin
   new.updated_at := now();
   new.updated_by_id := auth.uid();
@@ -55,6 +55,9 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
+
+-- handle_new_user เป็น SECURITY DEFINER สำหรับ trigger เท่านั้น — ไม่ให้เรียกผ่าน API
+revoke execute on function public.handle_new_user() from anon, authenticated, public;
 
 -- ══════════════════════════ categories ══════════════════════════
 create table if not exists public.categories (
