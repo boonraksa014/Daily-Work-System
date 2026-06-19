@@ -4,11 +4,17 @@ import (
 	"context"
 	"errors"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/gofiber/fiber/v2/middleware/requestid"
 
 	"dailywork-backend/internal/config"
 	"dailywork-backend/internal/database"
@@ -31,19 +37,38 @@ func main() {
 	app := fiber.New(fiber.Config{
 		AppName:      "Daily Work System API",
 		ErrorHandler: errorHandler,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 20 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	})
 
 	app.Use(recover.New())
+	app.Use(requestid.New())
 	app.Use(logger.New())
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: cfg.CORSOrigins,
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
 		AllowMethods: "GET,POST,PUT,PATCH,DELETE,OPTIONS",
 	}))
+	// rate limit ต่อ IP (เว้น health checks ที่ platform เรียกบ่อย)
+	app.Use(limiter.New(limiter.Config{
+		Max:        240,
+		Expiration: time.Minute,
+		Next:       func(c *fiber.Ctx) bool { return c.Path() == "/health" || c.Path() == "/live" },
+		LimitReached: func(c *fiber.Ctx) error {
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{"error": "คำขอถี่เกินไป ลองใหม่อีกครั้งในอีกสักครู่"})
+		},
+	}))
 
-	// health (ไม่ต้อง auth)
+	// liveness (ไม่แตะ DB) — สำหรับ platform เช็คว่า process ยังอยู่
+	app.Get("/live", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{"status": "ok"})
+	})
+	// readiness (ping DB) — พร้อมรับทราฟฟิกไหม
 	app.Get("/health", func(c *fiber.Ctx) error {
-		if err := pool.Ping(c.Context()); err != nil {
+		ctx, cancel := context.WithTimeout(c.Context(), 3*time.Second)
+		defer cancel()
+		if err := pool.Ping(ctx); err != nil {
 			return fiber.NewError(fiber.StatusServiceUnavailable, "database unavailable")
 		}
 		return c.JSON(fiber.Map{"status": "ok"})
@@ -94,10 +119,22 @@ func main() {
 	admin.Delete("/users/:id", users.Delete)
 
 	addr := ":" + cfg.Port
-	log.Printf("listening on %s", addr)
-	if err := app.Listen(addr); err != nil {
-		log.Fatalf("server: %v", err)
+	go func() {
+		log.Printf("listening on %s", addr)
+		if err := app.Listen(addr); err != nil {
+			log.Fatalf("server: %v", err)
+		}
+	}()
+
+	// graceful shutdown: รอสัญญาณแล้วปิดอย่างนุ่มนวล (ให้คำขอที่ค้างอยู่ทำงานจบ)
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	<-quit
+	log.Println("shutting down…")
+	if err := app.ShutdownWithTimeout(10 * time.Second); err != nil {
+		log.Printf("shutdown error: %v", err)
 	}
+	log.Println("stopped")
 }
 
 // errorHandler แปลง error เป็น JSON {"error": "..."} อย่างสม่ำเสมอ
