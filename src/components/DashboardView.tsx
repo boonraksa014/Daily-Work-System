@@ -101,8 +101,21 @@ export function DashboardView({ tasks, logEntries, onNavigate }: DashboardViewPr
           <div className="space-y-2">
             {tasks.filter(t => t.status !== "done").length === 0 && (
               <div className="text-center py-8">
-                <span style={{ fontSize: "2rem" }}>🎉</span>
-                <p style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--wt-text)", marginTop: 8 }}>เสร็จหมดแล้ว!</p>
+                {tasks.length === 0 ? (
+                  <>
+                    <span style={{ fontSize: "2rem" }}>🗂️</span>
+                    <p style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--wt-text)", marginTop: 8 }}>ยังไม่มีงาน</p>
+                    <button onClick={() => onNavigate("kanban")} className="mt-2 px-4 py-2 rounded-xl"
+                      style={{ background: "linear-gradient(135deg, #7c3aed, #a855f7)", color: "white", fontSize: "0.78rem", fontWeight: 800, border: "none" }}>
+                      เพิ่มงานแรก
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span style={{ fontSize: "2rem" }}>🎉</span>
+                    <p style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--wt-text)", marginTop: 8 }}>เสร็จหมดแล้ว!</p>
+                  </>
+                )}
               </div>
             )}
             {tasks.filter(t => t.status !== "done").slice(0, 5).map(task => (

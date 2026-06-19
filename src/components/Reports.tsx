@@ -298,7 +298,7 @@ export function Reports({ logEntries, tasks, categories }: ReportsProps) {
                 </tr>
               </thead>
               <tbody>
-                {[...logEntries].reverse().slice(0, 10).map((e, i) => (
+                {[...logEntries].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10).map((e, i) => (
                   <tr key={e.id} style={{ background: i % 2 === 0 ? "transparent" : "var(--wt-stripe)" }}>
                     <td className="py-3 pr-3" style={{ fontSize: "0.78rem", color: "var(--wt-muted)", whiteSpace: "nowrap", borderBottom: "1px solid var(--wt-soft2)" }}>{e.date}</td>
                     <td className="py-3 pr-3" style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--wt-text)", borderBottom: "1px solid var(--wt-soft2)" }}>{e.title}</td>
