@@ -230,13 +230,13 @@ export function DailyLog({ entries, categories, onEntriesChange, onDeleteEntry }
   const [editingId, setEditingId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
 
-  // ปิด popup เพิ่มงานด้วย Escape
+  // ปิด popup เพิ่ม/แก้ไขด้วย Escape
   useEffect(() => {
-    if (!showAdd) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setShowAdd(false); };
+    if (!showAdd && !editingId) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { setShowAdd(false); setEditingId(null); } };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [showAdd]);
+  }, [showAdd, editingId]);
 
   const q = query.trim().toLowerCase();
   const matchSearch = (e: LogEntry) => !q || e.title.toLowerCase().includes(q) || (e.note?.toLowerCase().includes(q) ?? false) || e.category.toLowerCase().includes(q);
@@ -274,13 +274,10 @@ export function DailyLog({ entries, categories, onEntriesChange, onDeleteEntry }
     else onEntriesChange(entries.filter(e => e.id !== id));
   }
 
+  const editingEntry = editingId ? entries.find(e => e.id === editingId) ?? null : null;
+
   function renderEntry(entry: LogEntry) {
-    return editingId === entry.id ? (
-      <EntryForm key={entry.id} date={entry.date} initial={entry} categories={categories}
-        onSubmit={data => updateEntry(entry.id, data)} onCancel={() => setEditingId(null)} />
-    ) : (
-      <EntryCard key={entry.id} entry={entry} categories={categories} onToggle={toggleEntry} onDelete={deleteEntry} onEdit={setEditingId} />
-    );
+    return <EntryCard key={entry.id} entry={entry} categories={categories} onToggle={toggleEntry} onDelete={deleteEntry} onEdit={setEditingId} />;
   }
 
   return (
@@ -455,6 +452,18 @@ export function DailyLog({ entries, categories, onEntriesChange, onDeleteEntry }
           onClick={() => setShowAdd(false)}>
           <div className="w-full max-w-md" style={{ maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
             <EntryForm onSubmit={addEntry} onCancel={() => setShowAdd(false)} date={selectedDate} categories={categories} />
+          </div>
+        </div>
+      )}
+
+      {/* Edit entry popup */}
+      {editingEntry && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(45,31,110,0.4)", backdropFilter: "blur(6px)" }}
+          onClick={() => setEditingId(null)}>
+          <div className="w-full max-w-md" style={{ maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+            <EntryForm initial={editingEntry} date={editingEntry.date} categories={categories}
+              onSubmit={data => updateEntry(editingEntry.id, data)} onCancel={() => setEditingId(null)} />
           </div>
         </div>
       )}
