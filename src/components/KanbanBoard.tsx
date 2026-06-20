@@ -137,7 +137,7 @@ interface TaskModalProps {
   status: Status;
   initial?: Task;
   availableTags: string[];
-  onSubmit: (data: TaskDraft) => void;
+  onSubmit: (data: TaskDraft, log?: { hours: number }) => void;
   onClose: () => void;
 }
 
@@ -148,6 +148,8 @@ function TaskModal({ status, initial, availableTags, onSubmit, onClose }: TaskMo
   const [priority, setPriority] = useState<Priority>(initial?.priority ?? "medium");
   const [tags, setTags] = useState<string[]>(initial?.tags ?? []);
   const [dueDate, setDueDate] = useState(initial?.dueDate ?? "");
+  const [alsoLog, setAlsoLog] = useState(false); // ลงเวลาที่ทำวันนี้ด้วย (เฉพาะตอนเพิ่มงานใหม่)
+  const [logHours, setLogHours] = useState(1);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -158,7 +160,8 @@ function TaskModal({ status, initial, availableTags, onSubmit, onClose }: TaskMo
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    onSubmit({ title: title.trim(), description: description.trim() || undefined, priority, status, tags, dueDate: dueDate || undefined });
+    const log = !isEdit && alsoLog ? { hours: logHours } : undefined;
+    onSubmit({ title: title.trim(), description: description.trim() || undefined, priority, status, tags, dueDate: dueDate || undefined }, log);
     onClose();
   }
 
@@ -246,6 +249,28 @@ function TaskModal({ status, initial, availableTags, onSubmit, onClose }: TaskMo
               </div>
             )}
           </div>
+
+          {/* ลงเวลาที่ทำวันนี้ด้วย — เฉพาะตอนเพิ่มงานใหม่ */}
+          {!isEdit && (
+            <div className="rounded-xl p-3" style={{ border: "2px solid var(--wt-border)", background: "var(--wt-soft)" }}>
+              <label className="flex items-center gap-2.5 cursor-pointer">
+                <input type="checkbox" checked={alsoLog} onChange={e => setAlsoLog(e.target.checked)}
+                  style={{ width: 18, height: 18, accentColor: "#7c3aed", cursor: "pointer" }} />
+                <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--wt-text)" }}>⏱️ ลงเวลาที่ทำงานนี้วันนี้ด้วย</span>
+              </label>
+              {alsoLog && (
+                <div className="flex items-center gap-2 mt-3 ml-7">
+                  <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--wt-muted)" }}>ชั่วโมง</span>
+                  <button type="button" onClick={() => setLogHours(h => Math.max(0.5, h - 0.5))}
+                    className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--wt-border)", color: "#7c3aed", fontWeight: 800, fontSize: "1rem" }}>−</button>
+                  <span style={{ fontSize: "1rem", fontWeight: 800, color: "var(--wt-text)", minWidth: 40, textAlign: "center" }}>{logHours}</span>
+                  <button type="button" onClick={() => setLogHours(h => Math.min(12, h + 0.5))}
+                    className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--wt-border)", color: "#7c3aed", fontWeight: 800, fontSize: "1rem" }}>+</button>
+                  <span style={{ fontSize: "0.78rem", color: "var(--wt-muted)" }}>ชม. (จะไปอยู่ในบันทึกรายวันของวันนี้)</span>
+                </div>
+              )}
+            </div>
+          )}
 
           </div>
           <div className="flex gap-3 p-4 shrink-0" style={{ borderTop: "1px solid var(--wt-border)", background: "var(--wt-card)" }}>
@@ -363,9 +388,11 @@ interface KanbanBoardProps {
   availableTags?: string[];
   /** บันทึกรายวัน — ใช้คำนวณชั่วโมงที่ลงให้แต่ละงาน */
   logEntries?: LogEntry[];
+  /** ถ้าส่งมา: ตอนเพิ่มงานแล้วติ๊ก "ลงเวลาด้วย" จะเรียกเพื่อสร้างบันทึกรายวันให้งานนั้น */
+  onLogTime?: (info: { taskId: string; title: string; hours: number }) => void;
 }
 
-export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags = [], logEntries = [] }: KanbanBoardProps) {
+export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags = [], logEntries = [], onLogTime }: KanbanBoardProps) {
   const [addingTo, setAddingTo] = useState<Status | null>(null);
   const [editing, setEditing] = useState<Task | null>(null);
   const [query, setQuery] = useState("");
@@ -390,8 +417,11 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags 
     };
   }, [menu]);
 
-  function addTask(data: TaskDraft) {
-    onTasksChange([...tasks, { ...data, id: makeId("task"), createdAt: new Date().toISOString().split("T")[0] }]);
+  function addTask(data: TaskDraft, log?: { hours: number }) {
+    const id = makeId("task");
+    onTasksChange([...tasks, { ...data, id, createdAt: new Date().toISOString().split("T")[0] }]);
+    // ติ๊ก "ลงเวลาด้วย" → สร้างบันทึกรายวันของวันนี้ที่ผูกกับงานนี้
+    if (log && onLogTime) onLogTime({ taskId: id, title: data.title, hours: log.hours });
   }
 
   function updateTask(id: string, data: TaskDraft) {
