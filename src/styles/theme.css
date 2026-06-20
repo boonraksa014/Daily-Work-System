@@ -198,6 +198,12 @@
   to { transform: rotate(360deg); }
 }
 
+/* น้องสัตว์เลี้ยงเด้งตัวเบาๆ (เคารพ reduced-motion ผ่าน block ด้านล่าง) */
+@keyframes wt-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-5px); }
+}
+
 /* Keyboard focus ring, app-wide. Mouse clicks don't trigger it. */
 :where(button, a, input, textarea, select, [role="menuitem"], [tabindex]):focus-visible {
   outline: 2px solid var(--wt-focus);
