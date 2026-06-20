@@ -393,7 +393,7 @@ export function DailyLog({ entries, categories, tasks, onEntriesChange, onDelete
               {[
                 { label: mode === "day" ? "งานทั้งหมด" : "รายการในช่วง", value: baseEntries.length, emoji: "📋", color: "#7c3aed" },
                 { label: "เสร็จแล้ว",    value: doneCount,   emoji: "✅", color: "#34d399" },
-                { label: "ชั่วโมงในการทำงาน",   value: totalHours,  emoji: "⏱️", color: "#fb923c" },
+                { label: "ชั่วโมง",       value: totalHours,  emoji: "⏱️", color: "#fb923c" },
               ].map(s => (
                 <div key={s.label} className="flex flex-col items-center py-4 px-3">
                   <span style={{ fontSize: "1.3rem" }}>{s.emoji}</span>
