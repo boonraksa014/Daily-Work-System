@@ -120,14 +120,20 @@ export function Reports({ logEntries, tasks, categories }: ReportsProps) {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {STAT_CARDS.map(s => (
-          <div key={s.key} className="rounded-2xl p-4 bg-white"
-            style={{ border: "1px solid var(--wt-border)", boxShadow: "0 1px 3px rgba(76,29,149,0.06)" }}>
-            <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl" style={{ background: s.chip, fontSize: "1rem" }}>{s.emoji}</span>
-            <p style={{ fontSize: "1.7rem", fontWeight: 800, lineHeight: 1.1, marginTop: 8, color: s.accent }}>{statValues[s.key]}</p>
-            <p style={{ fontSize: "0.72rem", color: "var(--wt-muted)", fontWeight: 600, marginTop: 2 }}>{s.label}{s.unit ? ` · ${s.unit}` : ""}</p>
-          </div>
-        ))}
+        {STAT_CARDS.map(s => {
+          const isText = s.key === "topcat"; // ค่าเป็นชื่อหมวด ไม่ใช่ตัวเลข → ใช้ขนาดเล็กลง ไม่ตะโกน
+          return (
+            <div key={s.key} className="rounded-2xl p-4 bg-white"
+              style={{ border: "1px solid var(--wt-border)", boxShadow: "0 1px 3px rgba(76,29,149,0.06)" }}>
+              <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl" style={{ background: s.chip, fontSize: "1rem" }}>{s.emoji}</span>
+              <p className={isText ? "truncate" : ""} title={isText ? String(statValues[s.key]) : undefined}
+                style={{ fontSize: isText ? "1.15rem" : "1.7rem", fontWeight: 800, lineHeight: isText ? 1.35 : 1.1, marginTop: 8, color: s.accent }}>
+                {statValues[s.key]}
+              </p>
+              <p style={{ fontSize: "0.72rem", color: "var(--wt-muted)", fontWeight: 600, marginTop: 2 }}>{s.label}{s.unit ? ` · ${s.unit}` : ""}</p>
+            </div>
+          );
+        })}
       </div>
 
       {/* Charts row */}

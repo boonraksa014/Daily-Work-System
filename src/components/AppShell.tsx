@@ -139,8 +139,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         {/* Bottom widget */}
         <div className="px-4 pb-5 pt-3 shrink-0">
-          <div className="rounded-2xl p-4 overflow-hidden relative" style={{ background: "linear-gradient(135deg, var(--wt-border), #fce7f3)" }}>
-            <div className="absolute" style={{ width: 80, height: 80, borderRadius: "50%", background: "rgba(124,58,237,0.08)", top: -20, right: -20 }} />
+          <div className="rounded-2xl p-4 overflow-hidden relative" style={{ background: "linear-gradient(135deg, var(--wt-soft2), var(--wt-border))", border: "1px solid var(--wt-border)" }}>
+            <div className="absolute" style={{ width: 80, height: 80, borderRadius: "50%", background: "rgba(124,58,237,0.10)", top: -20, right: -20 }} />
             <p style={{ fontSize: "0.68rem", fontWeight: 700, color: "var(--wt-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>งานทั้งหมด</p>
             <p style={{ fontSize: "2rem", fontWeight: 900, color: "var(--wt-text)", lineHeight: 1 }}>{tasks.length}</p>
             <div className="flex items-center gap-2 mt-2">
