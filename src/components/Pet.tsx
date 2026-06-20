@@ -18,6 +18,20 @@ const MOODS = {
   sleepy: { emoji: "😴", msg: "ยังไม่มีบันทึกวันนี้เลย เริ่มกันไหม?", color: "#6b5c88" },
 } as const;
 
+/** คำนวณอารมณ์น้องจากข้อมูลที่มี (ใช้ร่วมกับน้องที่เดินบนจอ) */
+export function petMood(tasks: Task[], logEntries: LogEntry[]): keyof typeof MOODS {
+  const today = new Date().toISOString().slice(0, 10);
+  const todayLogs = logEntries.filter(e => e.date === today);
+  const todayHours = todayLogs.reduce((s, e) => s + e.hours, 0);
+  const todayDone = todayLogs.filter(e => e.done).length;
+  if (todayHours >= 3 || todayDone >= 3) return "excited";
+  if (todayLogs.length > 0) return "happy";
+  return "sleepy";
+}
+export function petEmoji(tasks: Task[], logEntries: LogEntry[]): string {
+  return MOODS[petMood(tasks, logEntries)].emoji;
+}
+
 export function PetCompanion({ tasks, logEntries }: { tasks: Task[]; logEntries: LogEntry[] }) {
   const [name, setName] = useState(DEFAULT_NAME);
   const [editing, setEditing] = useState(false);
@@ -36,17 +50,12 @@ export function PetCompanion({ tasks, logEntries }: { tasks: Task[]; logEntries:
   }
 
   const today = new Date().toISOString().slice(0, 10);
-  const todayLogs = logEntries.filter(e => e.date === today);
-  const todayHours = todayLogs.reduce((s, e) => s + e.hours, 0);
-  const todayDone = todayLogs.filter(e => e.done).length;
+  const todayHours = logEntries.filter(e => e.date === today).reduce((s, e) => s + e.hours, 0);
   const totalDone = logEntries.filter(e => e.done).length + tasks.filter(t => t.status === "done").length;
   const level = Math.floor(totalDone / 5) + 1;
   const energy = Math.max(0, Math.min(1, todayHours / DAILY_GOAL));
 
-  const mood: keyof typeof MOODS =
-    todayHours >= 3 || todayDone >= 3 ? "excited" :
-    todayLogs.length > 0 ? "happy" : "sleepy";
-  const m = MOODS[mood];
+  const m = MOODS[petMood(tasks, logEntries)];
 
   return (
     <div className="bg-white rounded-2xl p-5 flex items-center gap-4" style={{ border: "2px solid var(--wt-border)", boxShadow: "0 4px 16px rgba(124,58,237,0.08)" }}>

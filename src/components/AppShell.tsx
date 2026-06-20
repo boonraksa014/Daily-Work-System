@@ -11,6 +11,7 @@ import {
 import { useData } from "@/lib/store";
 import { useAuth } from "@/lib/auth";
 import { Logo } from "@/components/Logo";
+import { RoamingPet } from "@/components/RoamingPet";
 
 // ── เมนูหลักด้านซ้าย ──
 // อยากเพิ่ม/แก้/ลบเมนู: แก้ที่ array นี้ (href = ที่อยู่หน้า, label = ข้อความ, emoji/icon = ไอคอน)
@@ -238,6 +239,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           {children}
         </main>
       </div>
+
+      {/* น้องสัตว์เลี้ยงเดินเล่นบนจอ */}
+      <RoamingPet />
     </div>
   );
 }
