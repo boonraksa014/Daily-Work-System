@@ -1,5 +1,19 @@
 "use client";
 
+// ─────────────────────────────────────────────────────────────────────────
+// store.tsx — "ตัวกลางข้อมูล" ของทั้งแอป (ฝั่ง frontend)
+//
+// ทำหน้าที่: โหลดข้อมูลของผู้ใช้จาก backend ตอนล็อกอิน, เก็บไว้ใน memory,
+//           แล้วซิงก์กลับขึ้น backend อัตโนมัติเมื่อมีการแก้ (เพิ่ม/แก้/ลบ)
+//
+// ทุกหน้าจอเรียกใช้ผ่าน `useData()` เพื่อดึงข้อมูล + ฟังก์ชันแก้ข้อมูล
+//
+// อยากแก้ตรงไหน:
+//  • แปลงข้อมูล backend↔แอป (เพิ่มฟิลด์) → ดูฟังก์ชัน xxxFromApi / xxxBody ด้านล่าง
+//  • ตัวบอกสถานะ "กำลังบันทึก/บันทึกแล้ว/ไม่สำเร็จ" → ดู SyncIndicator
+//  • หน้าโหลด / หน้า error ตอนต่อ backend ไม่ได้ → ดูส่วนท้ายของ DataProvider
+// ─────────────────────────────────────────────────────────────────────────
+
 import { createContext, useContext, useEffect, useRef, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
 import type { Task, Priority, Status } from "@/components/KanbanBoard";
 import type { LogEntry } from "@/components/DailyLog";

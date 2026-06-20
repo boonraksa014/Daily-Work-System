@@ -12,6 +12,9 @@ import { useData } from "@/lib/store";
 import { useAuth } from "@/lib/auth";
 import { Logo } from "@/components/Logo";
 
+// ── เมนูหลักด้านซ้าย ──
+// อยากเพิ่ม/แก้/ลบเมนู: แก้ที่ array นี้ (href = ที่อยู่หน้า, label = ข้อความ, emoji/icon = ไอคอน)
+// ถ้าเพิ่มเมนูใหม่ ต้องสร้างหน้าใน src/app/<ชื่อ>/page.tsx ให้ตรงกับ href ด้วย
 const NAV_ITEMS = [
   { href: "/dashboard", label: "ภาพรวม",       emoji: "🏠", icon: <LayoutDashboard size={17} />, gradient: "linear-gradient(135deg, #7c3aed, #a855f7)" },
   { href: "/kanban",    label: "Kanban",        emoji: "📋", icon: <Kanban size={17} />,           gradient: "linear-gradient(135deg, #0369a1, #38bdf8)" },
@@ -19,6 +22,7 @@ const NAV_ITEMS = [
   { href: "/reports",   label: "รายงาน",        emoji: "📊", icon: <BarChart3 size={17} />,        gradient: "linear-gradient(135deg, #d97706, #fbbf24)" },
 ];
 
+// ── เมนูย่อยใต้ "ตั้งค่า" ── (ADMIN_SETTINGS_ITEM = เมนูที่เห็นเฉพาะแอดมิน)
 const SETTINGS_ITEMS = [
   { href: "/settings/profile",    label: "โปรไฟล์",  emoji: "👤" },
   { href: "/settings/general",    label: "ทั่วไป",   emoji: "🎛️" },

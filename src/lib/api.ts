@@ -1,4 +1,6 @@
-// API client บางๆ สำหรับเรียก Go backend (แนบ Supabase access token เป็น Bearer)
+// api.ts — ตัวเรียก Go backend (แนบ token ของผู้ใช้เป็น Bearer ให้อัตโนมัติ)
+// ที่อยู่ backend มาจาก env NEXT_PUBLIC_API_URL (ถ้าไม่ตั้ง = localhost:8080 ตอน dev)
+// แก้ที่อยู่ backend: ตั้งค่า env ที่ Vercel (production) หรือ .env.local (เครื่องตัวเอง) — ไม่ต้องแก้ในไฟล์นี้
 
 const BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080").replace(/\/+$/, "");
 

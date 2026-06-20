@@ -1,3 +1,7 @@
+// types.ts — นิยาม "รูปร่างข้อมูล" ที่ใช้ทั้งแอป
+// อยากเพิ่มฟิลด์ใหม่ในหมวดหมู่/แท็ก/ตั้งค่า: เพิ่มที่ interface ด้านล่าง
+// (อย่าลืมแก้ให้ตรงกันที่ฐานข้อมูล + backend + store.tsx ด้วย — ดู DEVELOPER_GUIDE.md)
+
 // มุมมอง/หน้าหลักของแอป ใช้ร่วมกันระหว่าง App shell กับแต่ละ page
 export type View = "dashboard" | "kanban" | "log" | "reports";
 
