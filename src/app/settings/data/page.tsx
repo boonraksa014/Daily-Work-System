@@ -1,12 +1,12 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Download, Upload, RotateCcw } from "lucide-react";
+import { Download, Upload, RotateCcw, Sparkles } from "lucide-react";
 import { useData, type BackupData } from "@/lib/store";
 import { useConfirm } from "@/components/ConfirmDialog";
 
 export default function DataSettingsPage() {
-  const { tasks, logEntries, categories, tags, exportData, importData, resetData } = useData();
+  const { tasks, logEntries, categories, tags, exportData, importData, resetData, addSampleData } = useData();
   const confirm = useConfirm();
   const fileRef = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
@@ -52,6 +52,12 @@ export default function DataSettingsPage() {
     setMsg({ kind: "ok", text: "รีเซ็ตข้อมูลเป็นค่าเริ่มต้นแล้ว" });
   }
 
+  async function handleSample() {
+    if (!(await confirm({ title: "เติมข้อมูลตัวอย่าง?", message: "เพิ่มงานหลายสถานะ + บันทึกย้อนหลัง ~10 วัน เข้าไปในข้อมูลปัจจุบัน (เอาออกได้ด้วยปุ่มรีเซ็ต)", confirmLabel: "เติมข้อมูล" }))) return;
+    addSampleData();
+    setMsg({ kind: "ok", text: "เติมข้อมูลตัวอย่างแล้ว — ลองเปิดหน้ารายงาน / Kanban / บันทึกรายวันดูได้เลย" });
+  }
+
   const rowStyle: React.CSSProperties = { border: "1px solid var(--wt-border)", background: "var(--wt-card)" };
 
   return (
@@ -95,6 +101,19 @@ export default function DataSettingsPage() {
             <button onClick={() => fileRef.current?.click()} className="px-3.5 py-2 rounded-xl shrink-0"
               style={{ background: "var(--wt-soft2)", color: "var(--wt-text)", fontSize: "0.82rem", fontWeight: 800, border: "1px solid var(--wt-border)" }}>
               เลือกไฟล์
+            </button>
+          </div>
+
+          {/* Sample data (for testing) */}
+          <div className="flex items-center gap-3 rounded-2xl p-3.5" style={rowStyle}>
+            <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl" style={{ background: "#7c3aed22", color: "#7c3aed" }}><Sparkles size={17} /></span>
+            <div className="flex-1 min-w-0">
+              <p style={{ fontSize: "0.88rem", fontWeight: 700, color: "var(--wt-text)" }}>เติมข้อมูลตัวอย่าง</p>
+              <p style={{ fontSize: "0.74rem", color: "var(--wt-muted)" }}>สร้างงาน + บันทึกย้อนหลังไว้ทดสอบหน้าต่างๆ</p>
+            </div>
+            <button onClick={handleSample} className="px-3.5 py-2 rounded-xl shrink-0"
+              style={{ background: "var(--wt-soft2)", color: "#7c3aed", fontSize: "0.82rem", fontWeight: 800, border: "1px solid var(--wt-border)" }}>
+              เติมข้อมูล
             </button>
           </div>
 

@@ -23,6 +23,7 @@ import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Logo } from "@/components/Logo";
 import { INITIAL_CATEGORIES, INITIAL_SETTINGS } from "@/data/seed";
+import { makeSampleData } from "@/data/sample";
 
 export interface BackupData {
   tasks: Task[];
@@ -53,6 +54,7 @@ interface DataContextValue {
   exportData: () => BackupData;
   importData: (data: BackupData) => void;
   resetData: () => void;
+  addSampleData: () => void;
 }
 
 const DataContext = createContext<DataContextValue | null>(null);
@@ -379,6 +381,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setTagDefs([]);
     setSettings(INITIAL_SETTINGS);
   }
+  // เติมข้อมูลตัวอย่างสำหรับทดสอบ (เพิ่มเข้าไปในของเดิม) — ลบได้ด้วยปุ่มรีเซ็ต
+  function addSampleData() {
+    const s = makeSampleData();
+    setTasks(prev => [...prev, ...s.tasks]);
+    setLogEntries(prev => [...prev, ...s.logEntries]);
+    setTagDefs(prev => {
+      const have = new Set(prev.map(t => t.name));
+      return [...prev, ...s.tags.filter(t => !have.has(t.name))];
+    });
+  }
 
   if (loadError) {
     return (
@@ -413,7 +425,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <DataContext.Provider value={{ tasks, setTasks, logEntries, setLogEntries, removeTask, removeEntry, categories, addCategory, updateCategory, removeCategory, tags, addTag, setTagActive, renameTag, removeTag, settings, updateSettings, exportData, importData, resetData }}>
+    <DataContext.Provider value={{ tasks, setTasks, logEntries, setLogEntries, removeTask, removeEntry, categories, addCategory, updateCategory, removeCategory, tags, addTag, setTagActive, renameTag, removeTag, settings, updateSettings, exportData, importData, resetData, addSampleData }}>
       {children}
       <SyncIndicator state={syncState} />
       {toast && (
