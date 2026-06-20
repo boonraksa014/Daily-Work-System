@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Trash2, Clock, ChevronLeft, ChevronRight, CheckCircle2, Circle, Pencil, Search, X } from "lucide-react";
+import { Plus, Trash2, Clock, ChevronLeft, ChevronRight, ChevronDown, CheckCircle2, Circle, Pencil, Search, X } from "lucide-react";
 import { makeId } from "../lib/id";
 import type { Category } from "../types";
 import type { Task } from "./KanbanBoard";
@@ -267,6 +267,7 @@ export function DailyLog({ entries, categories, tasks, onEntriesChange, onDelete
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [headerOpen, setHeaderOpen] = useState(true); // ย่อ/ขยายส่วนสถิติของ header
 
   // ปิด popup เพิ่ม/แก้ไขด้วย Escape
   useEffect(() => {
@@ -323,17 +324,26 @@ export function DailyLog({ entries, categories, tasks, onEntriesChange, onDelete
       {/* Header card */}
       <div className="bg-white rounded-2xl overflow-hidden" style={{ border: "2px solid var(--wt-border)", boxShadow: "0 4px 16px rgba(124,58,237,0.1)" }}>
         <div className="px-5 py-4" style={{ background: "linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #ec4899 100%)" }}>
-          {/* Mode toggle */}
-          <div className="inline-flex rounded-xl overflow-hidden mb-3" style={{ border: "1px solid rgba(255,255,255,0.35)" }}>
-            {([["day", "📅 รายวัน"], ["range", "🗓️ ช่วงวันที่"]] as [LogMode, string][]).map(([m, label]) => {
-              const active = mode === m;
-              return (
-                <button key={m} onClick={() => { setMode(m); setShowAdd(false); setEditingId(null); }} aria-pressed={active}
-                  style={{ padding: "0.35rem 0.85rem", fontSize: "0.78rem", fontWeight: 800, color: active ? "#7c3aed" : "white", background: active ? "white" : "transparent" }}>
-                  {label}
-                </button>
-              );
-            })}
+          {/* Mode toggle + collapse */}
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <div className="inline-flex rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.35)" }}>
+              {([["day", "📅 รายวัน"], ["range", "🗓️ ช่วงวันที่"]] as [LogMode, string][]).map(([m, label]) => {
+                const active = mode === m;
+                return (
+                  <button key={m} onClick={() => { setMode(m); setShowAdd(false); setEditingId(null); }} aria-pressed={active}
+                    style={{ padding: "0.35rem 0.85rem", fontSize: "0.78rem", fontWeight: 800, color: active ? "#7c3aed" : "white", background: active ? "white" : "transparent" }}>
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            <button onClick={() => setHeaderOpen(o => !o)} aria-expanded={headerOpen}
+              aria-label={headerOpen ? "ย่อสรุป" : "ขยายสรุป"}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl transition shrink-0"
+              style={{ background: "rgba(255,255,255,0.2)", color: "white", fontSize: "0.74rem", fontWeight: 700, border: "1px solid rgba(255,255,255,0.3)" }}>
+              {!headerOpen && <span>{baseEntries.length} งาน · {totalHours} ชม.</span>}
+              <ChevronDown size={15} style={{ transform: headerOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+            </button>
           </div>
 
           {mode === "day" ? (
@@ -376,33 +386,37 @@ export function DailyLog({ entries, categories, tasks, onEntriesChange, onDelete
           )}
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 divide-x" style={{ borderTop: "1px solid var(--wt-border)" }}>
-          {[
-            { label: mode === "day" ? "งานทั้งหมด" : "รายการในช่วง", value: baseEntries.length, emoji: "📋", color: "#7c3aed" },
-            { label: "เสร็จแล้ว",    value: doneCount,   emoji: "✅", color: "#34d399" },
-            { label: "ชั่วโมงในการทำงาน",   value: totalHours,  emoji: "⏱️", color: "#fb923c" },
-          ].map(s => (
-            <div key={s.label} className="flex flex-col items-center py-4 px-3">
-              <span style={{ fontSize: "1.3rem" }}>{s.emoji}</span>
-              <span style={{ fontSize: "1.5rem", fontWeight: 900, color: s.color }}>{s.value}</span>
-              <span style={{ fontSize: "0.7rem", color: "var(--wt-muted)", fontWeight: 600 }}>{s.label}</span>
+        {headerOpen && (
+          <>
+            {/* Stats */}
+            <div className="grid grid-cols-3 divide-x" style={{ borderTop: "1px solid var(--wt-border)" }}>
+              {[
+                { label: mode === "day" ? "งานทั้งหมด" : "รายการในช่วง", value: baseEntries.length, emoji: "📋", color: "#7c3aed" },
+                { label: "เสร็จแล้ว",    value: doneCount,   emoji: "✅", color: "#34d399" },
+                { label: "ชั่วโมงในการทำงาน",   value: totalHours,  emoji: "⏱️", color: "#fb923c" },
+              ].map(s => (
+                <div key={s.label} className="flex flex-col items-center py-4 px-3">
+                  <span style={{ fontSize: "1.3rem" }}>{s.emoji}</span>
+                  <span style={{ fontSize: "1.5rem", fontWeight: 900, color: s.color }}>{s.value}</span>
+                  <span style={{ fontSize: "0.7rem", color: "var(--wt-muted)", fontWeight: 600 }}>{s.label}</span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        {/* Progress bar */}
-        {baseEntries.length > 0 && (
-          <div className="px-5 pb-4">
-            <div className="flex items-center justify-between mb-1.5">
-              <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--wt-muted)" }}>ความคืบหน้า</span>
-              <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#7c3aed" }}>{completionPct}%</span>
-            </div>
-            <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "var(--wt-border)" }}>
-              <div className="h-full w-full rounded-full transition-transform duration-500"
-                style={{ transform: `scaleX(${completionPct / 100})`, transformOrigin: "left", background: "linear-gradient(90deg, #7c3aed, #34d399)" }} />
-            </div>
-          </div>
+            {/* Progress bar */}
+            {baseEntries.length > 0 && (
+              <div className="px-5 pb-4">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--wt-muted)" }}>ความคืบหน้า</span>
+                  <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#7c3aed" }}>{completionPct}%</span>
+                </div>
+                <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "var(--wt-border)" }}>
+                  <div className="h-full w-full rounded-full transition-transform duration-500"
+                    style={{ transform: `scaleX(${completionPct / 100})`, transformOrigin: "left", background: "linear-gradient(90deg, #7c3aed, #34d399)" }} />
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
