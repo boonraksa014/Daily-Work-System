@@ -3,6 +3,7 @@ package config
 import (
 	"log"
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -26,7 +27,7 @@ func Load() *Config {
 		SupabaseURL:    trimSlash(os.Getenv("SUPABASE_URL")),
 		ServiceRoleKey: os.Getenv("SUPABASE_SERVICE_ROLE_KEY"),
 		JWTSecret:      os.Getenv("SUPABASE_JWT_SECRET"),
-		CORSOrigins:    getenv("CORS_ORIGINS", "http://localhost:3000"),
+		CORSOrigins:    sanitizeOrigins(getenv("CORS_ORIGINS", "http://localhost:3000")),
 	}
 
 	if c.DatabaseURL == "" {
@@ -56,4 +57,18 @@ func trimSlash(s string) string {
 		s = s[:len(s)-1]
 	}
 	return s
+}
+
+// sanitizeOrigins ทำความสะอาดรายการ origin (คั่นด้วย comma):
+// ตัดช่องว่าง + slash ท้าย เพื่อให้ค่าที่ก็อปมาแบบมี '/' ต่อท้ายไม่ทำให้ Fiber CORS panic
+func sanitizeOrigins(s string) string {
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = trimSlash(strings.TrimSpace(p))
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	return strings.Join(out, ",")
 }
