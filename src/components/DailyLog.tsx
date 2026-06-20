@@ -485,15 +485,15 @@ export function DailyLog({ entries, categories, tasks, onEntriesChange, onDelete
       {/* Add button (day mode only) */}
       {mode === "day" && (
         <button onClick={() => { setShowAdd(true); setEditingId(null); }}
-          className="flex items-center justify-center gap-2 py-4 rounded-2xl transition-all"
+          className="flex items-center justify-center gap-2 py-3 rounded-2xl transition-all"
           style={{
             background: "linear-gradient(135deg, #7c3aed, #a855f7)",
-            color: "white", fontSize: "0.92rem", fontWeight: 800, border: "none",
-            boxShadow: "0 6px 20px rgba(124,58,237,0.35)",
+            color: "white", fontSize: "0.88rem", fontWeight: 800, border: "none",
+            boxShadow: "0 3px 12px rgba(124,58,237,0.22)",
           }}
-          onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 10px 28px rgba(124,58,237,0.45)")}
-          onMouseLeave={e => (e.currentTarget.style.boxShadow = "0 6px 20px rgba(124,58,237,0.35)")}>
-          <Plus size={18} /> เพิ่มงาน
+          onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 6px 18px rgba(124,58,237,0.32)")}
+          onMouseLeave={e => (e.currentTarget.style.boxShadow = "0 3px 12px rgba(124,58,237,0.22)")}>
+          <Plus size={17} /> เพิ่มงาน
         </button>
       )}
 

@@ -20,7 +20,7 @@ const STAT_CARDS = [
   { key: "hours",      emoji: "⏱️", label: "ชั่วโมงงานทั้งหมด", unit: "ชม.",      accent: "#7c3aed", chip: "#ede9fe" },
   { key: "completion", emoji: "✅", label: "อัตราความสำเร็จ",   unit: "%",        accent: "#059669", chip: "#d1fae5" },
   { key: "avg",        emoji: "📈", label: "เฉลี่ยต่อวัน",      unit: "ชม./วัน", accent: "#d97706", chip: "#fef3c7" },
-  { key: "topcat",     emoji: "🏆", label: "หมวดหมู่หลัก",      unit: "",         accent: "#db2777", chip: "#fce7f3" },
+  { key: "topcat",     emoji: "🏆", label: "หมวดหมู่หลัก",      unit: "",         accent: "#7c3aed", chip: "#ede9fe" },
 ];
 
 interface CustomTooltipProps {
@@ -125,7 +125,7 @@ export function Reports({ logEntries, tasks, categories }: ReportsProps) {
           return (
             <div key={s.key} className="rounded-2xl p-4 bg-white"
               style={{ border: "1px solid var(--wt-border)", boxShadow: "0 1px 3px rgba(76,29,149,0.06)" }}>
-              <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl" style={{ background: s.chip, fontSize: "1rem" }}>{s.emoji}</span>
+              <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl" style={{ background: s.accent + "22", fontSize: "1rem" }}>{s.emoji}</span>
               <p className={isText ? "truncate" : ""} title={isText ? String(statValues[s.key]) : undefined}
                 style={{ fontSize: isText ? "1.15rem" : "1.7rem", fontWeight: 800, lineHeight: isText ? 1.35 : 1.1, marginTop: 8, color: s.accent }}>
                 {statValues[s.key]}

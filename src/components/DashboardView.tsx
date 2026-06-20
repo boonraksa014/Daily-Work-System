@@ -77,7 +77,7 @@ export function DashboardView({ tasks, logEntries, onNavigate }: DashboardViewPr
             style={{ border: "1px solid var(--wt-border)", boxShadow: "0 1px 3px rgba(76,29,149,0.06)" }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-3px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 10px 24px rgba(76,29,149,0.12)"; }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 1px 3px rgba(76,29,149,0.06)"; }}>
-            <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl" style={{ background: s.chip, fontSize: "1rem" }}>{s.emoji}</span>
+            <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl" style={{ background: s.accent + "22", fontSize: "1rem" }}>{s.emoji}</span>
             <p style={{ fontSize: "1.9rem", fontWeight: 800, lineHeight: 1.1, marginTop: 8, color: s.accent }}>{s.value}</p>
             <p style={{ fontSize: "0.72rem", color: "var(--wt-muted)", fontWeight: 600, marginTop: 2 }}>{s.label} · {s.unit}</p>
           </button>
