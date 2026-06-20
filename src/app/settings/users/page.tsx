@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Trash2, ShieldCheck, User as UserIcon, ToggleLeft, ToggleRight } from "lucide-react";
+import { Plus, Trash2, ShieldCheck, User as UserIcon, ToggleLeft, ToggleRight, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { apiFetch } from "@/lib/api";
 import { useConfirm } from "@/components/ConfirmDialog";
@@ -29,6 +29,7 @@ export default function UsersSettingsPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
   const [role, setRole] = useState<"admin" | "user">("user");
   const [creating, setCreating] = useState(false);
 
@@ -118,8 +119,17 @@ export default function UsersSettingsPage() {
           </div>
           <div style={{ minWidth: 150 }}>
             <label style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--wt-muted)", textTransform: "uppercase" }}>รหัสผ่าน *</label>
-            <input type="text" required minLength={6} value={password} onChange={e => setPassword(e.target.value)} placeholder="อย่างน้อย 6 ตัว"
-              className="block w-full mt-1 px-3 py-2.5 rounded-xl outline-none" style={inputStyle} />
+            <div className="relative mt-1">
+              <input type={showPw ? "text" : "password"} required minLength={6} value={password} onChange={e => setPassword(e.target.value)} placeholder="อย่างน้อย 6 ตัว"
+                autoComplete="new-password"
+                className="block w-full px-3 py-2.5 pr-10 rounded-xl outline-none" style={inputStyle} />
+              <button type="button" onClick={() => setShowPw(s => !s)} aria-label={showPw ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                className="absolute top-1/2 -translate-y-1/2 right-2 p-1 rounded-lg transition-colors" style={{ color: "var(--wt-muted)" }}
+                onMouseEnter={e => (e.currentTarget.style.background = "var(--wt-soft2)")}
+                onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </div>
           <div>
             <label style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--wt-muted)", textTransform: "uppercase" }}>สิทธิ์</label>
