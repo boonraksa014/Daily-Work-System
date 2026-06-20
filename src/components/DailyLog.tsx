@@ -267,7 +267,7 @@ export function DailyLog({ entries, categories, tasks, onEntriesChange, onDelete
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [headerOpen, setHeaderOpen] = useState(true); // ย่อ/ขยายส่วนสถิติของ header
+  const [headerOpen, setHeaderOpen] = useState(false); // ย่อ/ขยายส่วนสถิติของ header (เริ่มต้น = ยุบ)
 
   // ปิด popup เพิ่ม/แก้ไขด้วย Escape
   useEffect(() => {
