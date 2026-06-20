@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
@@ -29,27 +29,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!supabase) { setLoading(false); return; }
+    // คงค่า reference ของ user เดิมไว้ถ้า id ไม่เปลี่ยน — กัน re-render/effect ทำงานใหม่
+    // ตอน Supabase ยิง event refresh token (เช่นตอนสลับแท็บกลับมา)
+    const apply = (u: User | null) => setUser(prev => (prev?.id === u?.id ? prev : u));
     supabase.auth.getSession().then(({ data }) => {
-      setUser(data.session?.user ?? null);
+      apply(data.session?.user ?? null);
       setLoading(false);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      apply(session?.user ?? null);
     });
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  async function signIn(email: string, password: string) {
+  const signIn = useCallback(async (email: string, password: string) => {
     if (!supabase) return { error: "ยังไม่ได้ตั้งค่า Supabase" };
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error: error?.message ?? null };
-  }
-  async function signOut() { await supabase?.auth.signOut(); }
-  async function getToken() {
+  }, []);
+  const signOut = useCallback(async () => { await supabase?.auth.signOut(); }, []);
+  const getToken = useCallback(async () => {
     if (!supabase) return null;
     const { data } = await supabase.auth.getSession();
     return data.session?.access_token ?? null;
-  }
+  }, []);
 
   const role = roleOf(user);
 
