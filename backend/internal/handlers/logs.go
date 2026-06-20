@@ -18,6 +18,7 @@ type logDTO struct {
 	Hours      float64 `json:"hours"`
 	CategoryID *string `json:"categoryId"`
 	Category   string  `json:"category"` // ชื่อหมวด (สะดวกฝั่ง frontend)
+	TaskID     *string `json:"taskId"`   // งาน Kanban ที่ผูกไว้ (ถ้ามี)
 	Done       bool    `json:"done"`
 }
 
@@ -28,6 +29,7 @@ type logInput struct {
 	Note       *string `json:"note"`
 	Hours      float64 `json:"hours"`
 	CategoryID *string `json:"categoryId"`
+	TaskID     *string `json:"taskId"`
 	Done       bool    `json:"done"`
 }
 
@@ -36,7 +38,7 @@ func (h *Handler) ListLogs(c *fiber.Ctx) error {
 	uid := middleware.UserID(c)
 	rows, err := h.DB.Query(c.Context(), `
 		select l.id, l.entry_date, l.title, l.note, l.hours::double precision,
-		       l.category_id, coalesce(c.name, ''), l.done
+		       l.category_id, coalesce(c.name, ''), l.task_id, l.done
 		from public.log_entries l
 		left join public.categories c on c.id = l.category_id
 		where l.user_id = $1 and l.deleted_at is null
@@ -52,7 +54,7 @@ func (h *Handler) ListLogs(c *fiber.Ctx) error {
 			e   logDTO
 			day time.Time
 		)
-		if err := rows.Scan(&e.ID, &day, &e.Title, &e.Note, &e.Hours, &e.CategoryID, &e.Category, &e.Done); err != nil {
+		if err := rows.Scan(&e.ID, &day, &e.Title, &e.Note, &e.Hours, &e.CategoryID, &e.Category, &e.TaskID, &e.Done); err != nil {
 			return err
 		}
 		e.Date = dateStr(day)
@@ -118,33 +120,35 @@ func (h *Handler) insertOrUpdateLog(c *fiber.Ctx, uid string, in logInput, id st
 			day        time.Time
 			catName    *string
 			catID      *string
+			taskID     *string
 			returnedID string
 		)
 		var row pgx.Row
 		if id == "" {
 			row = tx.QueryRow(c.Context(), `
-				insert into public.log_entries (id, user_id, entry_date, title, note, hours, category_id, done)
-				values ($1,$2,$3,$4,$5,$6,$7,$8)
+				insert into public.log_entries (id, user_id, entry_date, title, note, hours, category_id, task_id, done)
+				values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
 				on conflict (id) do update set
 					entry_date=excluded.entry_date, title=excluded.title, note=excluded.note,
-					hours=excluded.hours, category_id=excluded.category_id, done=excluded.done
+					hours=excluded.hours, category_id=excluded.category_id, task_id=excluded.task_id, done=excluded.done
 				where public.log_entries.user_id = excluded.user_id
-				returning id, entry_date, title, note, hours::double precision, category_id, done`,
-				ensureID(in.ID), uid, in.Date, in.Title, in.Note, in.Hours, in.CategoryID, in.Done)
+				returning id, entry_date, title, note, hours::double precision, category_id, task_id, done`,
+				ensureID(in.ID), uid, in.Date, in.Title, in.Note, in.Hours, in.CategoryID, in.TaskID, in.Done)
 		} else {
 			row = tx.QueryRow(c.Context(), `
 				update public.log_entries
-				set entry_date=$1, title=$2, note=$3, hours=$4, category_id=$5, done=$6
-				where id=$7 and user_id=$8 and deleted_at is null
-				returning id, entry_date, title, note, hours::double precision, category_id, done`,
-				in.Date, in.Title, in.Note, in.Hours, in.CategoryID, in.Done, id, uid)
+				set entry_date=$1, title=$2, note=$3, hours=$4, category_id=$5, task_id=$6, done=$7
+				where id=$8 and user_id=$9 and deleted_at is null
+				returning id, entry_date, title, note, hours::double precision, category_id, task_id, done`,
+				in.Date, in.Title, in.Note, in.Hours, in.CategoryID, in.TaskID, in.Done, id, uid)
 		}
-		if err := row.Scan(&returnedID, &day, &dto.Title, &dto.Note, &dto.Hours, &catID, &dto.Done); err != nil {
+		if err := row.Scan(&returnedID, &day, &dto.Title, &dto.Note, &dto.Hours, &catID, &taskID, &dto.Done); err != nil {
 			return err
 		}
 		dto.ID = returnedID
 		dto.Date = dateStr(day)
 		dto.CategoryID = catID
+		dto.TaskID = taskID
 
 		// resolve ชื่อหมวด (ถ้ามี)
 		if catID != nil {

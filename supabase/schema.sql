@@ -133,6 +133,7 @@ create table if not exists public.log_entries (
   note          text,
   hours         numeric(4,1) not null default 1,
   category_id   uuid references public.categories (id) on delete set null,
+  task_id       uuid references public.tasks (id) on delete set null,
   done          boolean not null default false,
   created_at    timestamptz not null default now(),
   created_by_id uuid default auth.uid() references auth.users (id) on delete set null,
@@ -143,6 +144,7 @@ create table if not exists public.log_entries (
 );
 create index if not exists log_entries_user_active_idx on public.log_entries (user_id) where deleted_at is null;
 create index if not exists log_entries_category_idx on public.log_entries (category_id);
+create index if not exists log_entries_task_idx on public.log_entries (task_id);
 
 drop trigger if exists touch_log_entries on public.log_entries;
 create trigger touch_log_entries before update on public.log_entries

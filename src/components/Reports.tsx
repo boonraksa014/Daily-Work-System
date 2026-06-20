@@ -80,6 +80,15 @@ export function Reports({ logEntries, tasks, categories }: ReportsProps) {
   const avgHoursPerDay = (days.reduce((s, d) => s + d.hours, 0) / rangeDays).toFixed(1);
   const topCategory = categoryData[0]?.name ?? "-";
 
+  // เวลาที่ใช้ต่องาน Kanban (จากบันทึกที่ผูก task) — Top 6
+  const taskHourMap: Record<string, number> = {};
+  logEntries.forEach(e => { if (e.taskId) taskHourMap[e.taskId] = (taskHourMap[e.taskId] || 0) + e.hours; });
+  const taskTimeData = Object.entries(taskHourMap)
+    .map(([id, value]) => ({ id, title: tasks.find(t => t.id === id)?.title ?? "(งานที่ถูกลบ)", value }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 6);
+  const taskTimeMax = taskTimeData[0]?.value ?? 1;
+
   const statValues: Record<string, string | number> = {
     hours: totalHours, completion: completionRate, avg: avgHoursPerDay, topcat: topCategory,
   };
@@ -267,6 +276,40 @@ export function Reports({ logEntries, tasks, categories }: ReportsProps) {
             </ResponsiveContainer>
           )}
         </div>
+      </div>
+
+      {/* Time per task (linked Kanban tasks) */}
+      <div className="bg-white rounded-2xl p-5" style={{ border: "2px solid var(--wt-border)", boxShadow: "0 4px 16px rgba(124,58,237,0.08)" }}>
+        <div className="flex items-center gap-2 mb-4">
+          <div className="p-2 rounded-xl" style={{ background: "linear-gradient(135deg, #0369a1, #38bdf8)" }}>
+            <Clock size={14} style={{ color: "white" }} />
+          </div>
+          <div>
+            <p style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--wt-text)" }}>เวลาที่ใช้ต่องาน</p>
+            <p style={{ fontSize: "0.72rem", color: "var(--wt-muted)" }}>ชั่วโมงรวมที่ลงให้งานใน Kanban</p>
+          </div>
+        </div>
+        {taskTimeData.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8" style={{ color: "var(--wt-muted)" }}>
+            <span style={{ fontSize: "2rem" }}>🔗</span>
+            <p style={{ fontSize: "0.85rem", fontWeight: 700, marginTop: 8 }}>ยังไม่มีบันทึกที่ผูกกับงาน</p>
+            <p style={{ fontSize: "0.78rem", marginTop: 2 }}>ผูกงานได้ตอนเพิ่มบันทึกรายวัน (ช่อง “งานที่เกี่ยวข้อง”)</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {taskTimeData.map(t => (
+              <div key={t.id}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="truncate" style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--wt-text)", maxWidth: "75%" }} title={t.title}>📋 {t.title}</span>
+                  <span className="shrink-0" style={{ fontSize: "0.8rem", fontWeight: 800, color: "#0369a1" }}>{t.value} ชม.</span>
+                </div>
+                <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "var(--wt-soft2)" }}>
+                  <div className="h-full rounded-full transition-all duration-700" style={{ width: `${(t.value / taskTimeMax) * 100}%`, background: "linear-gradient(90deg, #0369a1, #38bdf8)" }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Recent log table */}

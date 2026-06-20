@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Plus, MoreHorizontal, Clock, Trash2, X, Sparkles, Pencil, Search, ChevronDown, Check } from "lucide-react";
 import { makeId } from "../lib/id";
 import { DatePicker } from "./DatePicker";
+import type { LogEntry } from "./DailyLog";
 
 export type Priority = "low" | "medium" | "high";
 export type Status = "todo" | "inprogress" | "done";
@@ -267,13 +268,14 @@ function TaskModal({ status, initial, availableTags, onSubmit, onClose }: TaskMo
 
 interface TaskCardProps {
   task: Task;
+  loggedHours: number; // ชั่วโมงรวมที่ลงในบันทึกรายวันให้งานนี้
   onOpenMenu: (task: Task, anchor: DOMRect) => void;
   onDragStart: (id: string) => void;
   onDragEnd: () => void;
   isDragging: boolean;
 }
 
-function TaskCard({ task, onOpenMenu, onDragStart, onDragEnd, isDragging }: TaskCardProps) {
+function TaskCard({ task, loggedHours, onOpenMenu, onDragStart, onDragEnd, isDragging }: TaskCardProps) {
   const pri = PRIORITY_CONFIG[task.priority];
   const overdue = isOverdue(task);
 
@@ -330,9 +332,16 @@ function TaskCard({ task, onOpenMenu, onDragStart, onDragEnd, isDragging }: Task
         )}
 
         <div className="flex items-center justify-between mt-3 ml-5">
-          <span className="px-2.5 py-1 rounded-full" style={{ background: pri.bg, color: pri.text, fontSize: "0.72rem", fontWeight: 700 }}>
-            {pri.label}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="px-2.5 py-1 rounded-full" style={{ background: pri.bg, color: pri.text, fontSize: "0.72rem", fontWeight: 700 }}>
+              {pri.label}
+            </span>
+            {loggedHours > 0 && (
+              <span className="flex items-center gap-1 px-2 py-1 rounded-full" style={{ background: "var(--wt-soft2)", color: "#7c3aed", fontSize: "0.7rem", fontWeight: 800 }} title="ชั่วโมงที่ลงให้งานนี้">
+                <Clock size={10} /> {loggedHours} ชม.
+              </span>
+            )}
+          </div>
           {task.dueDate && (
             <span className="flex items-center gap-1" style={{ fontSize: "0.72rem", fontWeight: overdue ? 800 : 400, color: overdue ? "#e11d48" : "var(--wt-muted)" }}
               title={overdue ? "เลยกำหนดแล้ว" : undefined}>
@@ -352,9 +361,11 @@ interface KanbanBoardProps {
   onDeleteTask?: (id: string) => void;
   /** รายชื่อแท็กจาก master (เฉพาะที่เปิดใช้งาน) สำหรับ dropdown เลือกแท็ก */
   availableTags?: string[];
+  /** บันทึกรายวัน — ใช้คำนวณชั่วโมงที่ลงให้แต่ละงาน */
+  logEntries?: LogEntry[];
 }
 
-export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags = [] }: KanbanBoardProps) {
+export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags = [], logEntries = [] }: KanbanBoardProps) {
   const [addingTo, setAddingTo] = useState<Status | null>(null);
   const [editing, setEditing] = useState<Task | null>(null);
   const [query, setQuery] = useState("");
@@ -401,6 +412,9 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags 
 
   const q = query.trim().toLowerCase();
   const allTags = Array.from(new Set(tasks.flatMap(t => t.tags))).sort();
+  // ชั่วโมงรวมที่ลงให้แต่ละงาน (จากบันทึกรายวัน)
+  const hoursByTask = new Map<string, number>();
+  for (const e of logEntries) if (e.taskId) hoursByTask.set(e.taskId, (hoursByTask.get(e.taskId) ?? 0) + e.hours);
   const filterActive = !!q || priFilter.length > 0 || tagFilter.length > 0;
   const matches = (t: Task) =>
     (!q || t.title.toLowerCase().includes(q) || (t.description?.toLowerCase().includes(q) ?? false) || t.tags.some(tag => tag.toLowerCase().includes(q)))
@@ -511,7 +525,7 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags 
                     </div>
                   )}
                   {colTasks.map(task => (
-                    <TaskCard key={task.id} task={task}
+                    <TaskCard key={task.id} task={task} loggedHours={hoursByTask.get(task.id) ?? 0}
                       onOpenMenu={(t, anchor) => setMenu({ task: t, x: anchor.right, y: anchor.bottom })}
                       onDragStart={setDraggingId} onDragEnd={() => { setDraggingId(null); setDragOverCol(null); }}
                       isDragging={draggingId === task.id} />

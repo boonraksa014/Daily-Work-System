@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Plus, Trash2, Clock, ChevronLeft, ChevronRight, CheckCircle2, Circle, Pencil, Search, X } from "lucide-react";
 import { makeId } from "../lib/id";
 import type { Category } from "../types";
+import type { Task } from "./KanbanBoard";
 import { DatePicker } from "./DatePicker";
 
 export interface LogEntry {
@@ -13,6 +14,7 @@ export interface LogEntry {
   note?: string;
   hours: number;
   category: string;
+  taskId?: string; // งาน Kanban ที่ผูกไว้ (ถ้ามี)
   done: boolean;
 }
 
@@ -42,23 +44,36 @@ interface EntryFormProps {
   date: string;
   initial?: LogEntry;
   categories: Category[];
+  tasks: Task[];
   onSubmit: (entry: Omit<LogEntry, "id">) => void;
   onCancel: () => void;
 }
 
-function EntryForm({ date, initial, categories, onSubmit, onCancel }: EntryFormProps) {
+function EntryForm({ date, initial, categories, tasks, onSubmit, onCancel }: EntryFormProps) {
   const isEdit = !!initial;
   const [title, setTitle] = useState(initial?.title ?? "");
   const [note, setNote] = useState(initial?.note ?? "");
   const [hours, setHours] = useState(initial?.hours ?? 1);
   const [category, setCategory] = useState(initial?.category ?? categories.find(c => c.isActive)?.name ?? categories[0]?.name ?? "");
+  const [taskId, setTaskId] = useState(initial?.taskId ?? "");
   // แสดงเฉพาะหมวดที่เปิดใช้งาน — แต่ยังคงโชว์หมวดที่เลือกอยู่แม้ถูกปิด (กรณีแก้รายการเก่า)
   const pickable = categories.filter(c => c.isActive || c.name === category);
+  // งานยังไม่เสร็จมาก่อน + คงงานที่เลือกไว้แม้เสร็จแล้ว (กรณีแก้รายการเก่า)
+  const pickableTasks = tasks.filter(t => t.status !== "done" || t.id === taskId);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    onSubmit({ date, title: title.trim(), note: note.trim() || undefined, hours, category, done: initial?.done ?? false });
+    onSubmit({ date, title: title.trim(), note: note.trim() || undefined, hours, category, taskId: taskId || undefined, done: initial?.done ?? false });
+  }
+
+  // เลือกงานแล้วถ้ายังไม่ได้พิมพ์ชื่อ ให้เติมชื่อจากงานให้อัตโนมัติ
+  function pickTask(id: string) {
+    setTaskId(id);
+    if (id && !title.trim()) {
+      const t = tasks.find(x => x.id === id);
+      if (t) setTitle(t.title);
+    }
   }
 
   return (
@@ -110,6 +125,21 @@ function EntryForm({ date, initial, categories, onSubmit, onCancel }: EntryFormP
           </div>
         </div>
 
+        {/* Task link (optional) */}
+        {tasks.length > 0 && (
+          <div>
+            <p style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--wt-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>งานที่เกี่ยวข้อง (ไม่บังคับ)</p>
+            <select value={taskId} onChange={e => pickTask(e.target.value)} aria-label="ผูกกับงาน"
+              className="w-full px-3 py-2.5 rounded-xl outline-none"
+              style={{ border: "2px solid var(--wt-border)", background: "var(--wt-soft)", color: "var(--wt-text)", fontFamily: "inherit", fontSize: "0.85rem" }}>
+              <option value="">— ไม่ผูกกับงาน —</option>
+              {pickableTasks.map(t => (
+                <option key={t.id} value={t.id}>{t.status === "inprogress" ? "⚡ " : t.status === "done" ? "✅ " : "📋 "}{t.title}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* Hours */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
@@ -148,13 +178,15 @@ function EntryForm({ date, initial, categories, onSubmit, onCancel }: EntryFormP
 interface EntryCardProps {
   entry: LogEntry;
   categories: Category[];
+  tasks: Task[];
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (id: string) => void;
 }
 
-function EntryCard({ entry, categories, onToggle, onDelete, onEdit }: EntryCardProps) {
+function EntryCard({ entry, categories, tasks, onToggle, onDelete, onEdit }: EntryCardProps) {
   const cat = findCat(categories, entry.category);
+  const linkedTask = entry.taskId ? tasks.find(t => t.id === entry.taskId) : undefined;
 
   return (
     <div
@@ -189,6 +221,11 @@ function EntryCard({ entry, categories, onToggle, onDelete, onEdit }: EntryCardP
           <span className="flex items-center gap-1 px-2.5 py-1 rounded-full" style={{ background: "var(--wt-border)", color: "#7c3aed", fontSize: "0.72rem", fontWeight: 700 }}>
             <Clock size={10} /> {entry.hours} ชม.
           </span>
+          {linkedTask && (
+            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full truncate" style={{ background: "var(--wt-tint-blue)", color: "var(--wt-c-todo-ink)", fontSize: "0.72rem", fontWeight: 700, maxWidth: 180 }} title={linkedTask.title}>
+              📋 {linkedTask.title}
+            </span>
+          )}
         </div>
       </div>
 
@@ -214,6 +251,7 @@ function EntryCard({ entry, categories, onToggle, onDelete, onEdit }: EntryCardP
 interface DailyLogProps {
   entries: LogEntry[];
   categories: Category[];
+  tasks: Task[];
   onEntriesChange: (entries: LogEntry[]) => void;
   /** ถ้าส่งมา จะใช้แทนการลบตรงๆ (เพื่อให้มี undo) */
   onDeleteEntry?: (id: string) => void;
@@ -221,7 +259,7 @@ interface DailyLogProps {
 
 type LogMode = "day" | "range";
 
-export function DailyLog({ entries, categories, onEntriesChange, onDeleteEntry }: DailyLogProps) {
+export function DailyLog({ entries, categories, tasks, onEntriesChange, onDeleteEntry }: DailyLogProps) {
   const [mode, setMode] = useState<LogMode>("day");
   const [selectedDate, setSelectedDate] = useState(todayStr());
   const [rangeStart, setRangeStart] = useState(offsetDate(todayStr(), -6));
@@ -277,7 +315,7 @@ export function DailyLog({ entries, categories, onEntriesChange, onDeleteEntry }
   const editingEntry = editingId ? entries.find(e => e.id === editingId) ?? null : null;
 
   function renderEntry(entry: LogEntry) {
-    return <EntryCard key={entry.id} entry={entry} categories={categories} onToggle={toggleEntry} onDelete={deleteEntry} onEdit={setEditingId} />;
+    return <EntryCard key={entry.id} entry={entry} categories={categories} tasks={tasks} onToggle={toggleEntry} onDelete={deleteEntry} onEdit={setEditingId} />;
   }
 
   return (
@@ -451,7 +489,7 @@ export function DailyLog({ entries, categories, onEntriesChange, onDeleteEntry }
           style={{ background: "rgba(45,31,110,0.4)", backdropFilter: "blur(6px)" }}
           onClick={() => setShowAdd(false)}>
           <div className="w-full max-w-md" style={{ maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
-            <EntryForm onSubmit={addEntry} onCancel={() => setShowAdd(false)} date={selectedDate} categories={categories} />
+            <EntryForm onSubmit={addEntry} onCancel={() => setShowAdd(false)} date={selectedDate} categories={categories} tasks={tasks} />
           </div>
         </div>
       )}
@@ -462,7 +500,7 @@ export function DailyLog({ entries, categories, onEntriesChange, onDeleteEntry }
           style={{ background: "rgba(45,31,110,0.4)", backdropFilter: "blur(6px)" }}
           onClick={() => setEditingId(null)}>
           <div className="w-full max-w-md" style={{ maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
-            <EntryForm initial={editingEntry} date={editingEntry.date} categories={categories}
+            <EntryForm initial={editingEntry} date={editingEntry.date} categories={categories} tasks={tasks}
               onSubmit={data => updateEntry(editingEntry.id, data)} onCancel={() => setEditingId(null)} />
           </div>
         </div>

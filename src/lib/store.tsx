@@ -61,7 +61,7 @@ const DataContext = createContext<DataContextValue | null>(null);
 interface ApiTask { id: string; title: string; description: string | null; priority: Priority; status: Status; tags: string[] | null; dueDate: string | null; createdAt: string }
 interface ApiCategory { id: string; name: string; emoji: string; color: string; isActive: boolean }
 interface ApiTag { id: string; name: string; isActive: boolean }
-interface ApiLog { id: string; date: string; title: string; note: string | null; hours: number; categoryId: string | null; category: string; done: boolean }
+interface ApiLog { id: string; date: string; title: string; note: string | null; hours: number; categoryId: string | null; category: string; taskId: string | null; done: boolean }
 interface ApiProfile { displayName: string; role: string; avatarColor: string; defaultView: string }
 
 // ── mappers: api → app ───────────────────────────────────────────
@@ -75,7 +75,7 @@ function tagFromApi(r: ApiTag): Tag {
   return { id: r.id, name: r.name, isActive: r.isActive };
 }
 function entryFromApi(r: ApiLog): LogEntry {
-  return { id: r.id, date: r.date, title: r.title, note: r.note ?? undefined, hours: r.hours, category: r.category, done: r.done };
+  return { id: r.id, date: r.date, title: r.title, note: r.note ?? undefined, hours: r.hours, category: r.category, taskId: r.taskId ?? undefined, done: r.done };
 }
 
 // ── bodies: app → api (ใช้สร้าง snapshot สำหรับ diff ด้วย) ───────
@@ -89,7 +89,7 @@ function tagBody(t: Tag): Record<string, unknown> {
   return { id: t.id, name: t.name, isActive: t.isActive };
 }
 function entryBody(e: LogEntry, catIdByName: Map<string, string>): Record<string, unknown> {
-  return { id: e.id, date: e.date, title: e.title, note: e.note ?? null, hours: e.hours, categoryId: catIdByName.get(e.category) ?? null, done: e.done };
+  return { id: e.id, date: e.date, title: e.title, note: e.note ?? null, hours: e.hours, categoryId: catIdByName.get(e.category) ?? null, taskId: e.taskId ?? null, done: e.done };
 }
 function profileBody(s: AppSettings): Record<string, unknown> {
   return { displayName: s.displayName, role: s.role, avatarColor: s.avatarColor, defaultView: s.defaultView };
