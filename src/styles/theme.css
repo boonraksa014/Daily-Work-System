@@ -212,6 +212,11 @@
   98%  { transform: translateX(0) scaleX(-1); }
   100% { transform: translateX(0) scaleX(1); }
 }
+/* แมวเดิน: ขาแกว่งสลับ + หางสะบัด + ตัวเด้งเบาๆ (สไตล์ VS Code Pets) */
+@keyframes wt-leg  { 0%, 100% { transform: rotate(22deg); }  50% { transform: rotate(-22deg); } }
+@keyframes wt-tail { 0%, 100% { transform: rotate(6deg); }   50% { transform: rotate(-20deg); } }
+.wt-cat-leg  { transform-box: fill-box; transform-origin: top center; animation: wt-leg 0.4s ease-in-out infinite; }
+.wt-cat-tail { transform-box: fill-box; transform-origin: bottom left; animation: wt-tail 0.6s ease-in-out infinite; }
 /* น้องที่เดินเป็นของตกแต่งล้วน — ปิดเมื่อผู้ใช้ขอลดการเคลื่อนไหว */
 @media (prefers-reduced-motion: reduce) {
   .wt-roam-pet { display: none !important; }
