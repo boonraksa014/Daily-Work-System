@@ -131,6 +131,7 @@ create table if not exists public.tasks (
   status        text not null default 'todo'   check (status in ('todo','inprogress','done')),
   tags          text[] not null default '{}',
   due_date      date,
+  project_id    uuid references public.projects (id) on delete set null,
   sort_order    int not null default 0,
   created_at    timestamptz not null default now(),
   created_by_id uuid default auth.uid() references auth.users (id) on delete set null,
@@ -140,6 +141,7 @@ create table if not exists public.tasks (
   deleted_by_id uuid references auth.users (id) on delete set null
 );
 create index if not exists tasks_user_active_idx on public.tasks (user_id) where deleted_at is null;
+create index if not exists tasks_project_idx on public.tasks (project_id);
 
 drop trigger if exists touch_tasks on public.tasks;
 create trigger touch_tasks before update on public.tasks
@@ -155,6 +157,7 @@ create table if not exists public.log_entries (
   hours         numeric(4,1) not null default 1,
   category_id   uuid references public.categories (id) on delete set null,
   task_id       uuid references public.tasks (id) on delete set null,
+  project_id    uuid references public.projects (id) on delete set null,
   done          boolean not null default false,
   created_at    timestamptz not null default now(),
   created_by_id uuid default auth.uid() references auth.users (id) on delete set null,
@@ -166,6 +169,7 @@ create table if not exists public.log_entries (
 create index if not exists log_entries_user_active_idx on public.log_entries (user_id) where deleted_at is null;
 create index if not exists log_entries_category_idx on public.log_entries (category_id);
 create index if not exists log_entries_task_idx on public.log_entries (task_id);
+create index if not exists log_entries_project_idx on public.log_entries (project_id);
 
 drop trigger if exists touch_log_entries on public.log_entries;
 create trigger touch_log_entries before update on public.log_entries

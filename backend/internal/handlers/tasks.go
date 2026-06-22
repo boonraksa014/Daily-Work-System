@@ -18,6 +18,7 @@ type taskDTO struct {
 	Status      string   `json:"status"`
 	Tags        []string `json:"tags"`
 	DueDate     *string  `json:"dueDate"`
+	ProjectID   *string  `json:"projectId"`
 	CreatedAt   string   `json:"createdAt"`
 }
 
@@ -29,6 +30,7 @@ type taskInput struct {
 	Status      string   `json:"status"`
 	Tags        []string `json:"tags"`
 	DueDate     *string  `json:"dueDate"`
+	ProjectID   *string  `json:"projectId"`
 }
 
 func (in *taskInput) normalize() {
@@ -47,7 +49,7 @@ func (in *taskInput) normalize() {
 func (h *Handler) ListTasks(c *fiber.Ctx) error {
 	uid := middleware.UserID(c)
 	rows, err := h.DB.Query(c.Context(), `
-		select id, title, description, priority, status, tags, due_date, created_at
+		select id, title, description, priority, status, tags, due_date, project_id, created_at
 		from public.tasks
 		where user_id = $1 and deleted_at is null
 		order by sort_order, created_at`, uid)
@@ -63,7 +65,7 @@ func (h *Handler) ListTasks(c *fiber.Ctx) error {
 			due     *time.Time
 			created time.Time
 		)
-		if err := rows.Scan(&t.ID, &t.Title, &t.Description, &t.Priority, &t.Status, &t.Tags, &due, &created); err != nil {
+		if err := rows.Scan(&t.ID, &t.Title, &t.Description, &t.Priority, &t.Status, &t.Tags, &due, &t.ProjectID, &created); err != nil {
 			return err
 		}
 		t.DueDate = dateStrPtr(due)
@@ -92,15 +94,15 @@ func (h *Handler) CreateTask(c *fiber.Ctx) error {
 			created time.Time
 		)
 		row := tx.QueryRow(c.Context(), `
-			insert into public.tasks (id, user_id, title, description, priority, status, tags, due_date)
-			values ($1,$2,$3,$4,$5,$6,$7,$8)
+			insert into public.tasks (id, user_id, title, description, priority, status, tags, due_date, project_id)
+			values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
 			on conflict (id) do update set
 				title=excluded.title, description=excluded.description, priority=excluded.priority,
-				status=excluded.status, tags=excluded.tags, due_date=excluded.due_date
+				status=excluded.status, tags=excluded.tags, due_date=excluded.due_date, project_id=excluded.project_id
 			where public.tasks.user_id = excluded.user_id
-			returning id, title, description, priority, status, tags, due_date, created_at`,
-			ensureID(in.ID), uid, in.Title, in.Description, in.Priority, in.Status, in.Tags, in.DueDate)
-		if err := row.Scan(&dto.ID, &dto.Title, &dto.Description, &dto.Priority, &dto.Status, &dto.Tags, &due, &created); err != nil {
+			returning id, title, description, priority, status, tags, due_date, project_id, created_at`,
+			ensureID(in.ID), uid, in.Title, in.Description, in.Priority, in.Status, in.Tags, in.DueDate, in.ProjectID)
+		if err := row.Scan(&dto.ID, &dto.Title, &dto.Description, &dto.Priority, &dto.Status, &dto.Tags, &due, &dto.ProjectID, &created); err != nil {
 			return err
 		}
 		dto.DueDate = dateStrPtr(due)
@@ -138,11 +140,11 @@ func (h *Handler) UpdateTask(c *fiber.Ctx) error {
 		)
 		row := tx.QueryRow(c.Context(), `
 			update public.tasks
-			set title=$1, description=$2, priority=$3, status=$4, tags=$5, due_date=$6
-			where id=$7 and user_id=$8 and deleted_at is null
-			returning id, title, description, priority, status, tags, due_date, created_at`,
-			in.Title, in.Description, in.Priority, in.Status, in.Tags, in.DueDate, id, uid)
-		if err := row.Scan(&dto.ID, &dto.Title, &dto.Description, &dto.Priority, &dto.Status, &dto.Tags, &due, &created); err != nil {
+			set title=$1, description=$2, priority=$3, status=$4, tags=$5, due_date=$6, project_id=$7
+			where id=$8 and user_id=$9 and deleted_at is null
+			returning id, title, description, priority, status, tags, due_date, project_id, created_at`,
+			in.Title, in.Description, in.Priority, in.Status, in.Tags, in.DueDate, in.ProjectID, id, uid)
+		if err := row.Scan(&dto.ID, &dto.Title, &dto.Description, &dto.Priority, &dto.Status, &dto.Tags, &due, &dto.ProjectID, &created); err != nil {
 			if err == pgx.ErrNoRows {
 				found = false
 				return nil

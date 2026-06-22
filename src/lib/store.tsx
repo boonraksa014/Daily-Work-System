@@ -65,16 +65,16 @@ interface DataContextValue {
 const DataContext = createContext<DataContextValue | null>(null);
 
 // ── รูปแบบที่ backend ส่งกลับ ───────────────────────────────────
-interface ApiTask { id: string; title: string; description: string | null; priority: Priority; status: Status; tags: string[] | null; dueDate: string | null; createdAt: string }
+interface ApiTask { id: string; title: string; description: string | null; priority: Priority; status: Status; tags: string[] | null; dueDate: string | null; projectId: string | null; createdAt: string }
 interface ApiCategory { id: string; name: string; emoji: string; color: string; isActive: boolean }
 interface ApiTag { id: string; name: string; isActive: boolean }
 interface ApiProject { id: string; name: string; color: string; isActive: boolean }
-interface ApiLog { id: string; date: string; title: string; note: string | null; hours: number; categoryId: string | null; category: string; taskId: string | null; done: boolean }
+interface ApiLog { id: string; date: string; title: string; note: string | null; hours: number; categoryId: string | null; category: string; taskId: string | null; projectId: string | null; done: boolean }
 interface ApiProfile { displayName: string; role: string; avatarColor: string; defaultView: string }
 
 // ── mappers: api → app ───────────────────────────────────────────
 function taskFromApi(r: ApiTask): Task {
-  return { id: r.id, title: r.title, description: r.description ?? undefined, priority: r.priority, status: r.status, tags: r.tags ?? [], createdAt: r.createdAt, dueDate: r.dueDate ?? undefined };
+  return { id: r.id, title: r.title, description: r.description ?? undefined, priority: r.priority, status: r.status, tags: r.tags ?? [], createdAt: r.createdAt, dueDate: r.dueDate ?? undefined, projectId: r.projectId ?? undefined };
 }
 function categoryFromApi(r: ApiCategory): Category {
   return { id: r.id, name: r.name, emoji: r.emoji, color: r.color, isActive: r.isActive };
@@ -86,12 +86,12 @@ function projectFromApi(r: ApiProject): Project {
   return { id: r.id, name: r.name, color: r.color, isActive: r.isActive };
 }
 function entryFromApi(r: ApiLog): LogEntry {
-  return { id: r.id, date: r.date, title: r.title, note: r.note ?? undefined, hours: r.hours, category: r.category, taskId: r.taskId ?? undefined, done: r.done };
+  return { id: r.id, date: r.date, title: r.title, note: r.note ?? undefined, hours: r.hours, category: r.category, taskId: r.taskId ?? undefined, projectId: r.projectId ?? undefined, done: r.done };
 }
 
 // ── bodies: app → api (ใช้สร้าง snapshot สำหรับ diff ด้วย) ───────
 function taskBody(t: Task): Record<string, unknown> {
-  return { id: t.id, title: t.title, description: t.description ?? null, priority: t.priority, status: t.status, tags: t.tags, dueDate: t.dueDate ?? null };
+  return { id: t.id, title: t.title, description: t.description ?? null, priority: t.priority, status: t.status, tags: t.tags, dueDate: t.dueDate ?? null, projectId: t.projectId ?? null };
 }
 function categoryBody(c: Category): Record<string, unknown> {
   return { id: c.id, name: c.name, emoji: c.emoji, color: c.color, isActive: c.isActive };
@@ -103,7 +103,7 @@ function projectBody(p: Project): Record<string, unknown> {
   return { id: p.id, name: p.name, color: p.color, isActive: p.isActive };
 }
 function entryBody(e: LogEntry, catIdByName: Map<string, string>): Record<string, unknown> {
-  return { id: e.id, date: e.date, title: e.title, note: e.note ?? null, hours: e.hours, categoryId: catIdByName.get(e.category) ?? null, taskId: e.taskId ?? null, done: e.done };
+  return { id: e.id, date: e.date, title: e.title, note: e.note ?? null, hours: e.hours, categoryId: catIdByName.get(e.category) ?? null, taskId: e.taskId ?? null, projectId: e.projectId ?? null, done: e.done };
 }
 function profileBody(s: AppSettings): Record<string, unknown> {
   return { displayName: s.displayName, role: s.role, avatarColor: s.avatarColor, defaultView: s.defaultView };

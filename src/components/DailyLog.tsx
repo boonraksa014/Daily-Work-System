@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Trash2, Clock, ChevronLeft, ChevronRight, ChevronDown, CheckCircle2, Circle, Pencil, Search, X } from "lucide-react";
 import { makeId } from "../lib/id";
-import type { Category } from "../types";
+import type { Category, Project } from "../types";
 import type { Task } from "./KanbanBoard";
 import { DatePicker } from "./DatePicker";
 
@@ -15,6 +15,7 @@ export interface LogEntry {
   hours: number;
   category: string;
   taskId?: string; // งาน Kanban ที่ผูกไว้ (ถ้ามี)
+  projectId?: string; // โปรเจกต์ที่เกี่ยวข้อง (ถ้ามี)
   done: boolean;
 }
 
@@ -45,34 +46,39 @@ interface EntryFormProps {
   initial?: LogEntry;
   categories: Category[];
   tasks: Task[];
+  projects: Project[];
   onSubmit: (entry: Omit<LogEntry, "id">) => void;
   onCancel: () => void;
 }
 
-function EntryForm({ date, initial, categories, tasks, onSubmit, onCancel }: EntryFormProps) {
+function EntryForm({ date, initial, categories, tasks, projects, onSubmit, onCancel }: EntryFormProps) {
   const isEdit = !!initial;
   const [title, setTitle] = useState(initial?.title ?? "");
   const [note, setNote] = useState(initial?.note ?? "");
   const [hours, setHours] = useState(initial?.hours ?? 1);
   const [category, setCategory] = useState(initial?.category ?? categories.find(c => c.isActive)?.name ?? categories[0]?.name ?? "");
   const [taskId, setTaskId] = useState(initial?.taskId ?? "");
+  const [projectId, setProjectId] = useState(initial?.projectId ?? "");
   // แสดงเฉพาะหมวดที่เปิดใช้งาน — แต่ยังคงโชว์หมวดที่เลือกอยู่แม้ถูกปิด (กรณีแก้รายการเก่า)
   const pickable = categories.filter(c => c.isActive || c.name === category);
   // งานยังไม่เสร็จมาก่อน + คงงานที่เลือกไว้แม้เสร็จแล้ว (กรณีแก้รายการเก่า)
   const pickableTasks = tasks.filter(t => t.status !== "done" || t.id === taskId);
+  // แสดงเฉพาะโปรเจกต์ที่เปิดใช้งาน + คงโปรเจกต์ที่เลือกไว้แม้ถูกปิด (กรณีแก้รายการเก่า)
+  const pickableProjects = projects.filter(p => p.isActive || p.id === projectId);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    onSubmit({ date, title: title.trim(), note: note.trim() || undefined, hours, category, taskId: taskId || undefined, done: initial?.done ?? false });
+    onSubmit({ date, title: title.trim(), note: note.trim() || undefined, hours, category, taskId: taskId || undefined, projectId: projectId || undefined, done: initial?.done ?? false });
   }
 
-  // เลือกงานแล้วถ้ายังไม่ได้พิมพ์ชื่อ ให้เติมชื่อจากงานให้อัตโนมัติ
+  // เลือกงานแล้วถ้ายังไม่ได้พิมพ์ชื่อ ให้เติมชื่อจากงานให้อัตโนมัติ + สืบทอดโปรเจกต์ของงานถ้ายังไม่ได้เลือก
   function pickTask(id: string) {
     setTaskId(id);
-    if (id && !title.trim()) {
+    if (id) {
       const t = tasks.find(x => x.id === id);
-      if (t) setTitle(t.title);
+      if (t && !title.trim()) setTitle(t.title);
+      if (t?.projectId && !projectId) setProjectId(t.projectId);
     }
   }
 
@@ -140,6 +146,21 @@ function EntryForm({ date, initial, categories, tasks, onSubmit, onCancel }: Ent
           </div>
         )}
 
+        {/* Project link (optional) */}
+        {projects.length > 0 && (
+          <div>
+            <p style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--wt-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>โปรเจกต์ (ไม่บังคับ)</p>
+            <select value={projectId} onChange={e => setProjectId(e.target.value)} aria-label="โปรเจกต์"
+              className="w-full px-3 py-2.5 rounded-xl outline-none"
+              style={{ border: "2px solid var(--wt-border)", background: "var(--wt-soft)", color: "var(--wt-text)", fontFamily: "inherit", fontSize: "0.85rem" }}>
+              <option value="">— ไม่ระบุโปรเจกต์ —</option>
+              {pickableProjects.map(p => (
+                <option key={p.id} value={p.id}>{p.name}{!p.isActive ? " (ปิดใช้งาน)" : ""}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* Hours */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
@@ -179,14 +200,16 @@ interface EntryCardProps {
   entry: LogEntry;
   categories: Category[];
   tasks: Task[];
+  projects: Project[];
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (id: string) => void;
 }
 
-function EntryCard({ entry, categories, tasks, onToggle, onDelete, onEdit }: EntryCardProps) {
+function EntryCard({ entry, categories, tasks, projects, onToggle, onDelete, onEdit }: EntryCardProps) {
   const cat = findCat(categories, entry.category);
   const linkedTask = entry.taskId ? tasks.find(t => t.id === entry.taskId) : undefined;
+  const linkedProject = entry.projectId ? projects.find(p => p.id === entry.projectId) : undefined;
 
   return (
     <div
@@ -226,6 +249,12 @@ function EntryCard({ entry, categories, tasks, onToggle, onDelete, onEdit }: Ent
               📋 {linkedTask.title}
             </span>
           )}
+          {linkedProject && (
+            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full truncate" style={{ background: linkedProject.color + "22", color: "var(--wt-text)", fontSize: "0.72rem", fontWeight: 700, maxWidth: 180 }} title={linkedProject.name}>
+              <span className="inline-block rounded-full shrink-0" style={{ width: 8, height: 8, background: linkedProject.color }} />
+              {linkedProject.name}
+            </span>
+          )}
         </div>
       </div>
 
@@ -252,6 +281,7 @@ interface DailyLogProps {
   entries: LogEntry[];
   categories: Category[];
   tasks: Task[];
+  projects: Project[];
   onEntriesChange: (entries: LogEntry[]) => void;
   /** ถ้าส่งมา จะใช้แทนการลบตรงๆ (เพื่อให้มี undo) */
   onDeleteEntry?: (id: string) => void;
@@ -259,7 +289,7 @@ interface DailyLogProps {
 
 type LogMode = "day" | "range";
 
-export function DailyLog({ entries, categories, tasks, onEntriesChange, onDeleteEntry }: DailyLogProps) {
+export function DailyLog({ entries, categories, tasks, projects, onEntriesChange, onDeleteEntry }: DailyLogProps) {
   const [mode, setMode] = useState<LogMode>("day");
   const [selectedDate, setSelectedDate] = useState(todayStr());
   const [rangeStart, setRangeStart] = useState(offsetDate(todayStr(), -6));
@@ -316,7 +346,7 @@ export function DailyLog({ entries, categories, tasks, onEntriesChange, onDelete
   const editingEntry = editingId ? entries.find(e => e.id === editingId) ?? null : null;
 
   function renderEntry(entry: LogEntry) {
-    return <EntryCard key={entry.id} entry={entry} categories={categories} tasks={tasks} onToggle={toggleEntry} onDelete={deleteEntry} onEdit={setEditingId} />;
+    return <EntryCard key={entry.id} entry={entry} categories={categories} tasks={tasks} projects={projects} onToggle={toggleEntry} onDelete={deleteEntry} onEdit={setEditingId} />;
   }
 
   return (
@@ -503,7 +533,7 @@ export function DailyLog({ entries, categories, tasks, onEntriesChange, onDelete
           style={{ background: "rgba(45,31,110,0.4)", backdropFilter: "blur(6px)" }}
           onClick={() => setShowAdd(false)}>
           <div className="w-full max-w-md" style={{ maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
-            <EntryForm onSubmit={addEntry} onCancel={() => setShowAdd(false)} date={selectedDate} categories={categories} tasks={tasks} />
+            <EntryForm onSubmit={addEntry} onCancel={() => setShowAdd(false)} date={selectedDate} categories={categories} tasks={tasks} projects={projects} />
           </div>
         </div>
       )}
@@ -514,7 +544,7 @@ export function DailyLog({ entries, categories, tasks, onEntriesChange, onDelete
           style={{ background: "rgba(45,31,110,0.4)", backdropFilter: "blur(6px)" }}
           onClick={() => setEditingId(null)}>
           <div className="w-full max-w-md" style={{ maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
-            <EntryForm initial={editingEntry} date={editingEntry.date} categories={categories} tasks={tasks}
+            <EntryForm initial={editingEntry} date={editingEntry.date} categories={categories} tasks={tasks} projects={projects}
               onSubmit={data => updateEntry(editingEntry.id, data)} onCancel={() => setEditingId(null)} />
           </div>
         </div>

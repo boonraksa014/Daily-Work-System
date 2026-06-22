@@ -5,6 +5,7 @@ import { Plus, MoreHorizontal, Clock, Trash2, X, Sparkles, Pencil, Search, Chevr
 import { makeId } from "../lib/id";
 import { DatePicker } from "./DatePicker";
 import type { LogEntry } from "./DailyLog";
+import type { Project } from "../types";
 
 export type Priority = "low" | "medium" | "high";
 export type Status = "todo" | "inprogress" | "done";
@@ -18,6 +19,7 @@ export interface Task {
   tags: string[];
   createdAt: string;
   dueDate?: string;
+  projectId?: string; // โปรเจกต์ที่งานนี้สังกัด (ถ้ามี)
 }
 
 const PRIORITY_CONFIG: Record<Priority, { label: string; bg: string; text: string; dot: string }> = {
@@ -137,19 +139,24 @@ interface TaskModalProps {
   status: Status;
   initial?: Task;
   availableTags: string[];
+  availableProjects: Project[];
   onSubmit: (data: TaskDraft, log?: { hours: number }) => void;
   onClose: () => void;
 }
 
-function TaskModal({ status, initial, availableTags, onSubmit, onClose }: TaskModalProps) {
+function TaskModal({ status, initial, availableTags, availableProjects, onSubmit, onClose }: TaskModalProps) {
   const isEdit = !!initial;
   const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [priority, setPriority] = useState<Priority>(initial?.priority ?? "medium");
   const [tags, setTags] = useState<string[]>(initial?.tags ?? []);
   const [dueDate, setDueDate] = useState(initial?.dueDate ?? "");
+  const [projectId, setProjectId] = useState(initial?.projectId ?? "");
   const [alsoLog, setAlsoLog] = useState(false); // ลงเวลาที่ทำวันนี้ด้วย (เฉพาะตอนเพิ่มงานใหม่)
   const [logHours, setLogHours] = useState(1);
+
+  // แสดงเฉพาะโปรเจกต์ที่เปิดใช้งาน — แต่คงโปรเจกต์ที่เลือกไว้แม้ถูกปิด (กรณีแก้งานเก่า)
+  const pickableProjects = availableProjects.filter(p => p.isActive || p.id === projectId);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -161,7 +168,7 @@ function TaskModal({ status, initial, availableTags, onSubmit, onClose }: TaskMo
     e.preventDefault();
     if (!title.trim()) return;
     const log = !isEdit && alsoLog ? { hours: logHours } : undefined;
-    onSubmit({ title: title.trim(), description: description.trim() || undefined, priority, status, tags, dueDate: dueDate || undefined }, log);
+    onSubmit({ title: title.trim(), description: description.trim() || undefined, priority, status, tags, dueDate: dueDate || undefined, projectId: projectId || undefined }, log);
     onClose();
   }
 
@@ -232,6 +239,20 @@ function TaskModal({ status, initial, availableTags, onSubmit, onClose }: TaskMo
             </div>
           </div>
 
+          {availableProjects.length > 0 && (
+            <div>
+              <label htmlFor="task-project" style={labelStyle}>โปรเจกต์</label>
+              <select id="task-project" value={projectId} onChange={e => setProjectId(e.target.value)}
+                className="w-full mt-1 px-3 py-2.5 rounded-xl outline-none transition-colors"
+                style={{ ...inputStyle, fontSize: "0.85rem" }}>
+                <option value="">— ไม่ระบุโปรเจกต์ —</option>
+                {pickableProjects.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}{!p.isActive ? " (ปิดใช้งาน)" : ""}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div>
             <label style={labelStyle}>แท็ก</label>
             <TagMultiSelect options={availableTags} value={tags} onChange={setTags} />
@@ -294,13 +315,14 @@ function TaskModal({ status, initial, availableTags, onSubmit, onClose }: TaskMo
 interface TaskCardProps {
   task: Task;
   loggedHours: number; // ชั่วโมงรวมที่ลงในบันทึกรายวันให้งานนี้
+  project?: Project; // โปรเจกต์ที่งานนี้สังกัด (ถ้ามี)
   onOpenMenu: (task: Task, anchor: DOMRect) => void;
   onDragStart: (id: string) => void;
   onDragEnd: () => void;
   isDragging: boolean;
 }
 
-function TaskCard({ task, loggedHours, onOpenMenu, onDragStart, onDragEnd, isDragging }: TaskCardProps) {
+function TaskCard({ task, loggedHours, project, onOpenMenu, onDragStart, onDragEnd, isDragging }: TaskCardProps) {
   const pri = PRIORITY_CONFIG[task.priority];
   const overdue = isOverdue(task);
 
@@ -345,6 +367,16 @@ function TaskCard({ task, loggedHours, onOpenMenu, onDragStart, onDragEnd, isDra
           <p className="mt-1.5 ml-5 line-clamp-2" style={{ fontSize: "0.78rem", color: "var(--wt-muted)" }}>{task.description}</p>
         )}
 
+        {project && (
+          <div className="mt-2 ml-5">
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full"
+              style={{ background: project.color + "22", color: "var(--wt-text)", fontSize: "0.7rem", fontWeight: 700 }}>
+              <span className="inline-block rounded-full" style={{ width: 8, height: 8, background: project.color }} />
+              {project.name}
+            </span>
+          </div>
+        )}
+
         {task.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-2 ml-5">
             {task.tags.map(t => {
@@ -386,13 +418,15 @@ interface KanbanBoardProps {
   onDeleteTask?: (id: string) => void;
   /** รายชื่อแท็กจาก master (เฉพาะที่เปิดใช้งาน) สำหรับ dropdown เลือกแท็ก */
   availableTags?: string[];
+  /** โปรเจกต์จาก master สำหรับ dropdown เลือกโปรเจกต์ของงาน */
+  availableProjects?: Project[];
   /** บันทึกรายวัน — ใช้คำนวณชั่วโมงที่ลงให้แต่ละงาน */
   logEntries?: LogEntry[];
   /** ถ้าส่งมา: ตอนเพิ่มงานแล้วติ๊ก "ลงเวลาด้วย" จะเรียกเพื่อสร้างบันทึกรายวันให้งานนั้น */
-  onLogTime?: (info: { taskId: string; title: string; hours: number }) => void;
+  onLogTime?: (info: { taskId: string; title: string; hours: number; projectId?: string }) => void;
 }
 
-export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags = [], logEntries = [], onLogTime }: KanbanBoardProps) {
+export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags = [], availableProjects = [], logEntries = [], onLogTime }: KanbanBoardProps) {
   const [addingTo, setAddingTo] = useState<Status | null>(null);
   const [editing, setEditing] = useState<Task | null>(null);
   const [query, setQuery] = useState("");
@@ -421,7 +455,7 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags 
     const id = makeId("task");
     onTasksChange([...tasks, { ...data, id, createdAt: new Date().toISOString().split("T")[0] }]);
     // ติ๊ก "ลงเวลาด้วย" → สร้างบันทึกรายวันของวันนี้ที่ผูกกับงานนี้
-    if (log && onLogTime) onLogTime({ taskId: id, title: data.title, hours: log.hours });
+    if (log && onLogTime) onLogTime({ taskId: id, title: data.title, hours: log.hours, projectId: data.projectId });
   }
 
   function updateTask(id: string, data: TaskDraft) {
@@ -445,6 +479,7 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags 
   // ชั่วโมงรวมที่ลงให้แต่ละงาน (จากบันทึกรายวัน)
   const hoursByTask = new Map<string, number>();
   for (const e of logEntries) if (e.taskId) hoursByTask.set(e.taskId, (hoursByTask.get(e.taskId) ?? 0) + e.hours);
+  const projectById = new Map(availableProjects.map(p => [p.id, p]));
   const filterActive = !!q || priFilter.length > 0 || tagFilter.length > 0;
   const matches = (t: Task) =>
     (!q || t.title.toLowerCase().includes(q) || (t.description?.toLowerCase().includes(q) ?? false) || t.tags.some(tag => tag.toLowerCase().includes(q)))
@@ -556,6 +591,7 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags 
                   )}
                   {colTasks.map(task => (
                     <TaskCard key={task.id} task={task} loggedHours={hoursByTask.get(task.id) ?? 0}
+                      project={task.projectId ? projectById.get(task.projectId) : undefined}
                       onOpenMenu={(t, anchor) => setMenu({ task: t, x: anchor.right, y: anchor.bottom })}
                       onDragStart={setDraggingId} onDragEnd={() => { setDraggingId(null); setDragOverCol(null); }}
                       isDragging={draggingId === task.id} />
@@ -620,8 +656,8 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags 
       {/* Backdrop to catch outside clicks while the menu is open. */}
       {menu && <div className="fixed inset-0" style={{ zIndex: 55 }} onClick={() => setMenu(null)} />}
 
-      {addingTo && <TaskModal status={addingTo} availableTags={availableTags} onSubmit={addTask} onClose={() => setAddingTo(null)} />}
-      {editing && <TaskModal status={editing.status} initial={editing} availableTags={availableTags} onSubmit={data => updateTask(editing.id, data)} onClose={() => setEditing(null)} />}
+      {addingTo && <TaskModal status={addingTo} availableTags={availableTags} availableProjects={availableProjects} onSubmit={addTask} onClose={() => setAddingTo(null)} />}
+      {editing && <TaskModal status={editing.status} initial={editing} availableTags={availableTags} availableProjects={availableProjects} onSubmit={data => updateTask(editing.id, data)} onClose={() => setEditing(null)} />}
     </div>
   );
 }
