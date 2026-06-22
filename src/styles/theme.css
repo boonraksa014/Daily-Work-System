@@ -212,11 +212,6 @@
   98%  { transform: translateX(0) scaleX(-1); }
   100% { transform: translateX(0) scaleX(1); }
 }
-/* ก้าวเดินนุ่มๆ: ขึ้น-ลง + โยกตัวเล็กน้อย ให้ดูลื่นแม้มีแค่ 2 เฟรม */
-@keyframes wt-step {
-  0%, 100% { transform: translateY(0) rotate(-1.5deg); }
-  50%      { transform: translateY(-4px) rotate(1.5deg); }
-}
 /* น้องที่เดินเป็นของตกแต่งล้วน — ปิดเมื่อผู้ใช้ขอลดการเคลื่อนไหว */
 @media (prefers-reduced-motion: reduce) {
   .wt-roam-pet { display: none !important; }
