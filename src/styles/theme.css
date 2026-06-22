@@ -212,6 +212,9 @@
   98%  { transform: translateX(0) scaleX(-1); }
   100% { transform: translateX(0) scaleX(1); }
 }
+/* น้องกระโดด (ใช้ตอนพฤติกรรม jump) */
+@keyframes wt-hop { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+.wt-hop { animation: wt-hop 0.5s ease-in-out infinite; }
 /* น้องที่เดินเป็นของตกแต่งล้วน — ปิดเมื่อผู้ใช้ขอลดการเคลื่อนไหว */
 @media (prefers-reduced-motion: reduce) {
   .wt-roam-pet { display: none !important; }
