@@ -212,8 +212,6 @@
   98%  { transform: translateX(0) scaleX(-1); }
   100% { transform: translateX(0) scaleX(1); }
 }
-/* แมว pixel เดิน: วนเฟรม Walk1↔Walk2 ของ sprite sheet (เฟรม 0,1) */
-@keyframes wt-cat-walk { from { background-position: 0 0; } to { background-position: -64px 0; } }
 /* น้องที่เดินเป็นของตกแต่งล้วน — ปิดเมื่อผู้ใช้ขอลดการเคลื่อนไหว */
 @media (prefers-reduced-motion: reduce) {
   .wt-roam-pet { display: none !important; }

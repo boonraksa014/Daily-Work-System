@@ -1,24 +1,36 @@
 "use client";
 
-// น้องแมว pixel เดินเล่นที่ขอบล่างจอ (สไตล์ VS Code Pets) — ใช้ sprite sheet
-//   ไฟล์: public/cat-sprite.png  (8 เฟรม ๆ ละ 32×32, รวม 256×32, พื้นหลังโปร่งใส)
-//   เฟรม 0,1 = เดิน → วนสองเฟรมนี้เป็นท่าเดิน
+// น้องแมวเดินเล่นที่ขอบล่างจอ (สไตล์ VS Code Pets)
+//   ใช้รูปแยก 8 เฟรมใน public/ (cat-1..cat-8.png) — เฟรม 1,2 = ท่าเดิน → สลับวนเป็นท่าเดิน
 // ของตกแต่งล้วน: ไม่ขวางการคลิก + ปิดเมื่อ prefers-reduced-motion
-// ถ้ายังไม่มีไฟล์ sprite จะไม่แสดงอะไร (ไม่ทำให้หน้าพัง)
+// ถ้ายังไม่มีไฟล์รูป จะไม่แสดงอะไร (ไม่ทำให้หน้าพัง)
 import { useEffect, useState } from "react";
 
-const SPRITE = "/cat-sprite.png";
-const SCALE = 2; // 32px → 64px (คมแบบพิกเซล)
+const WALK_FRAMES = ["/cat-1.png", "/cat-2.png"]; // Walk1, Walk2
+const HEIGHT = 64; // ความสูงที่แสดง (px)
 
 export function RoamingPet() {
   const [ready, setReady] = useState(false);
+  const [frame, setFrame] = useState(0);
 
+  // โหลดรูปท่าเดินก่อน — พร้อมค่อยแสดง
   useEffect(() => {
-    const img = new Image();
-    img.onload = () => setReady(true);
-    img.onerror = () => setReady(false);
-    img.src = SPRITE;
+    let done = 0;
+    let ok = true;
+    WALK_FRAMES.forEach(src => {
+      const im = new Image();
+      im.onload = () => { if (++done === WALK_FRAMES.length && ok) setReady(true); };
+      im.onerror = () => { ok = false; };
+      im.src = src;
+    });
   }, []);
+
+  // สลับเฟรมเดิน
+  useEffect(() => {
+    if (!ready) return;
+    const id = setInterval(() => setFrame(f => (f + 1) % WALK_FRAMES.length), 360);
+    return () => clearInterval(id);
+  }, [ready]);
 
   if (!ready) return null;
 
@@ -30,26 +42,17 @@ export function RoamingPet() {
         position: "fixed",
         left: 0,
         bottom: 6,
-        width: 32 * SCALE,
-        height: 32 * SCALE,
+        height: HEIGHT,
         zIndex: 40,
         pointerEvents: "none",
         animation: "wt-walk 40s linear infinite",
       }}
     >
-      <div
-        style={{
-          width: 32,
-          height: 32,
-          transform: `scale(${SCALE})`,
-          transformOrigin: "bottom left",
-          backgroundImage: `url(${SPRITE})`,
-          backgroundRepeat: "no-repeat",
-          backgroundSize: "256px 32px",
-          imageRendering: "pixelated",
-          animation: "wt-cat-walk 0.7s steps(2) infinite",
-          filter: "drop-shadow(0 3px 3px rgba(45,31,110,0.25))",
-        }}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={WALK_FRAMES[frame]}
+        alt=""
+        style={{ height: HEIGHT, width: "auto", display: "block", filter: "drop-shadow(0 3px 4px rgba(45,31,110,0.28))" }}
       />
     </div>
   );
