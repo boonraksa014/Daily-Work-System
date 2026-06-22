@@ -111,6 +111,11 @@ func main() {
 	api.Patch("/tags/:id", h.UpdateTag)
 	api.Delete("/tags/:id", h.DeleteTag)
 
+	api.Get("/projects", h.ListProjects)
+	api.Post("/projects", h.CreateProject)
+	api.Patch("/projects/:id", h.UpdateProject)
+	api.Delete("/projects/:id", h.DeleteProject)
+
 	// จัดการผู้ใช้ — เฉพาะแอดมิน
 	admin := api.Group("/admin", mw.RequireAdmin())
 	admin.Get("/users", users.List)

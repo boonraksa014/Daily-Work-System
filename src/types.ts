@@ -21,6 +21,14 @@ export interface Tag {
   isActive: boolean;
 }
 
+/** โปรเจกต์ (master) — จัดการได้ที่ ตั้งค่า → โปรเจกต์ */
+export interface Project {
+  id: string;
+  name: string;
+  color: string;
+  isActive: boolean;
+}
+
 /** ค่าตั้งค่าทั่วไป + โปรไฟล์ผู้ใช้ */
 export interface AppSettings {
   displayName: string;

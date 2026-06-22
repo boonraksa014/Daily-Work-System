@@ -6,7 +6,7 @@ import { useData, type BackupData } from "@/lib/store";
 import { useConfirm } from "@/components/ConfirmDialog";
 
 export default function DataSettingsPage() {
-  const { tasks, logEntries, categories, tags, exportData, importData, resetData, addSampleData } = useData();
+  const { tasks, logEntries, categories, tags, projects, exportData, importData, resetData, addSampleData } = useData();
   const confirm = useConfirm();
   const fileRef = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
@@ -38,6 +38,7 @@ export default function DataSettingsPage() {
         logEntries: parsed.logEntries,
         categories: parsed.categories ?? categories,
         tags: parsed.tags ?? tags,
+        projects: parsed.projects ?? projects,
         settings: parsed.settings ?? exportData().settings,
       });
       setMsg({ kind: "ok", text: "นำเข้าข้อมูลเรียบร้อย" });

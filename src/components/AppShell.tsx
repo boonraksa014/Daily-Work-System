@@ -28,6 +28,7 @@ const SETTINGS_ITEMS = [
   { href: "/settings/general",    label: "ทั่วไป",   emoji: "🎛️" },
   { href: "/settings/categories", label: "หมวดหมู่", emoji: "🏷️" },
   { href: "/settings/tags",       label: "แท็ก",     emoji: "🔖" },
+  { href: "/settings/projects",   label: "โปรเจกต์", emoji: "📁" },
   { href: "/settings/data",       label: "ข้อมูล",   emoji: "💾" },
 ];
 

@@ -17,7 +17,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
 import type { Task, Priority, Status } from "@/components/KanbanBoard";
 import type { LogEntry } from "@/components/DailyLog";
-import type { Category, AppSettings, Tag } from "@/types";
+import type { Category, AppSettings, Tag, Project } from "@/types";
 import { makeId } from "@/lib/id";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -30,6 +30,7 @@ export interface BackupData {
   logEntries: LogEntry[];
   categories: Category[];
   tags: Tag[];
+  projects: Project[];
   settings: AppSettings;
 }
 
@@ -49,6 +50,10 @@ interface DataContextValue {
   setTagActive: (name: string, active: boolean) => void;
   renameTag: (oldTag: string, newTag: string) => void;
   removeTag: (tag: string) => void;
+  projects: Project[];
+  addProject: (data: Omit<Project, "id">) => void;
+  updateProject: (id: string, data: Omit<Project, "id">) => void;
+  removeProject: (id: string) => void;
   settings: AppSettings;
   updateSettings: (patch: Partial<AppSettings>) => void;
   exportData: () => BackupData;
@@ -63,6 +68,7 @@ const DataContext = createContext<DataContextValue | null>(null);
 interface ApiTask { id: string; title: string; description: string | null; priority: Priority; status: Status; tags: string[] | null; dueDate: string | null; createdAt: string }
 interface ApiCategory { id: string; name: string; emoji: string; color: string; isActive: boolean }
 interface ApiTag { id: string; name: string; isActive: boolean }
+interface ApiProject { id: string; name: string; color: string; isActive: boolean }
 interface ApiLog { id: string; date: string; title: string; note: string | null; hours: number; categoryId: string | null; category: string; taskId: string | null; done: boolean }
 interface ApiProfile { displayName: string; role: string; avatarColor: string; defaultView: string }
 
@@ -75,6 +81,9 @@ function categoryFromApi(r: ApiCategory): Category {
 }
 function tagFromApi(r: ApiTag): Tag {
   return { id: r.id, name: r.name, isActive: r.isActive };
+}
+function projectFromApi(r: ApiProject): Project {
+  return { id: r.id, name: r.name, color: r.color, isActive: r.isActive };
 }
 function entryFromApi(r: ApiLog): LogEntry {
   return { id: r.id, date: r.date, title: r.title, note: r.note ?? undefined, hours: r.hours, category: r.category, taskId: r.taskId ?? undefined, done: r.done };
@@ -89,6 +98,9 @@ function categoryBody(c: Category): Record<string, unknown> {
 }
 function tagBody(t: Tag): Record<string, unknown> {
   return { id: t.id, name: t.name, isActive: t.isActive };
+}
+function projectBody(p: Project): Record<string, unknown> {
+  return { id: p.id, name: p.name, color: p.color, isActive: p.isActive };
 }
 function entryBody(e: LogEntry, catIdByName: Map<string, string>): Record<string, unknown> {
   return { id: e.id, date: e.date, title: e.title, note: e.note ?? null, hours: e.hours, categoryId: catIdByName.get(e.category) ?? null, taskId: e.taskId ?? null, done: e.done };
@@ -165,6 +177,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTagDefs] = useState<Tag[]>([]);
+  const [projects, setProjectDefs] = useState<Project[]>([]);
   const [settings, setSettings] = useState<AppSettings>(INITIAL_SETTINGS);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState(false);
@@ -181,6 +194,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const entrySnap = useRef(new Map<string, string>());
   const catSnap = useRef(new Map<string, string>());
   const tagSnap = useRef(new Map<string, string>());
+  const projectSnap = useRef(new Map<string, string>());
   const settingsSnap = useRef<string>("");
 
   // อัปเดตสถานะการบันทึก + ตั้งลองใหม่อัตโนมัติเมื่อล้มเหลว
@@ -204,12 +218,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     (async () => {
       try {
         const token = await getToken();
-        const [profile, tasksRes, logsRes, catsRes, tagsRes] = await Promise.all([
+        const [profile, tasksRes, logsRes, catsRes, tagsRes, projsRes] = await Promise.all([
           apiFetch<ApiProfile>(token, "/profile"),
           apiFetch<{ tasks: ApiTask[] }>(token, "/tasks"),
           apiFetch<{ logs: ApiLog[] }>(token, "/logs"),
           apiFetch<{ categories: ApiCategory[] }>(token, "/categories"),
           apiFetch<{ tags: ApiTag[] }>(token, "/tags"),
+          apiFetch<{ projects: ApiProject[] }>(token, "/projects"),
         ]);
         if (cancelled) return;
 
@@ -241,8 +256,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
           }
         }
 
+        const projDefs: Project[] = (projsRes?.projects ?? []).map(projectFromApi);
+
         setCategories(cats);
         setTagDefs(tagDefs);
+        setProjectDefs(projDefs);
         setTasks(tks);
         setLogEntries(ents);
 
@@ -250,6 +268,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const catIdByName = new Map(cats.map(c => [c.name, c.id]));
         catSnap.current = new Map(serverCats.map(c => [c.id, JSON.stringify(categoryBody(c))]));
         tagSnap.current = new Map((tagsRes?.tags ?? []).map(r => [r.id, JSON.stringify(tagBody(tagFromApi(r)))]));
+        projectSnap.current = new Map(projDefs.map(p => [p.id, JSON.stringify(projectBody(p))]));
         taskSnap.current = new Map(tks.map(t => [t.id, JSON.stringify(taskBody(t))]));
         entrySnap.current = new Map(ents.map(e => [e.id, JSON.stringify(entryBody(e, catIdByName))]));
 
@@ -271,6 +290,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       // categories ก่อน เพื่อให้ category มีอยู่ก่อน log อ้างถึง (FK)
       let ok = await syncCollection(token, "/categories", categories, catSnap.current, categoryBody);
       ok = (await syncCollection(token, "/tags", tags, tagSnap.current, tagBody)) && ok;
+      ok = (await syncCollection(token, "/projects", projects, projectSnap.current, projectBody)) && ok;
       ok = (await syncCollection(token, "/tasks", tasks, taskSnap.current, taskBody)) && ok;
       const catIdByName = new Map(categories.map(c => [c.name, c.id]));
       ok = (await syncCollection(token, "/logs", logEntries, entrySnap.current, (e) => entryBody(e, catIdByName))) && ok;
@@ -278,7 +298,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }, 600);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, logEntries, categories, tags, loaded, user, getToken, retryNonce]);
+  }, [tasks, logEntries, categories, tags, projects, loaded, user, getToken, retryNonce]);
 
   // ── sync profile/settings (debounced) ──
   useEffect(() => {
@@ -335,6 +355,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
     notify("ลบหมวดหมู่แล้ว", () => { setToast(null); setCategories(prev => prev.some(c => c.id === id) ? prev : [...prev, removed]); });
   }
 
+  function addProject(data: Omit<Project, "id">) { setProjectDefs(prev => [...prev, { ...data, id: makeId() }]); }
+  function updateProject(id: string, data: Omit<Project, "id">) { setProjectDefs(prev => prev.map(p => p.id === id ? { ...p, ...data } : p)); }
+  function removeProject(id: string) {
+    const removed = projects.find(p => p.id === id);
+    if (!removed) return;
+    setProjectDefs(prev => prev.filter(p => p.id !== id));
+    notify("ลบโปรเจกต์แล้ว", () => { setToast(null); setProjectDefs(prev => prev.some(p => p.id === id) ? prev : [...prev, removed]); });
+  }
+
   function addTag(name: string) {
     const n = name.trim();
     if (!n) return;
@@ -365,11 +394,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   function updateSettings(patch: Partial<AppSettings>) { setSettings(prev => ({ ...INITIAL_SETTINGS, ...prev, ...patch })); }
 
-  function exportData(): BackupData { return { tasks, logEntries, categories, tags, settings }; }
+  function exportData(): BackupData { return { tasks, logEntries, categories, tags, projects, settings }; }
   function importData(data: BackupData) {
     // gen id ใหม่ทั้งหมด (= import แทนที่ของเดิม) — diff-sync จะลบของเก่าบน server แล้ว POST ของใหม่
     if (Array.isArray(data.categories)) setCategories(data.categories.map(c => ({ ...c, id: makeId() })));
     if (Array.isArray(data.tags)) setTagDefs(data.tags.map(t => ({ ...t, id: makeId() })));
+    if (Array.isArray(data.projects)) setProjectDefs(data.projects.map(p => ({ ...p, id: makeId() })));
     if (Array.isArray(data.tasks)) setTasks(data.tasks.map(t => ({ ...t, id: makeId() })));
     if (Array.isArray(data.logEntries)) setLogEntries(data.logEntries.map(e => ({ ...e, id: makeId() })));
     if (data.settings) setSettings({ ...INITIAL_SETTINGS, ...data.settings });
@@ -379,6 +409,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setLogEntries([]);
     setCategories(INITIAL_CATEGORIES.map(c => ({ ...c, id: makeId() })));
     setTagDefs([]);
+    setProjectDefs([]);
     setSettings(INITIAL_SETTINGS);
   }
   // เติมข้อมูลตัวอย่างสำหรับทดสอบ (เพิ่มเข้าไปในของเดิม) — ลบได้ด้วยปุ่มรีเซ็ต
@@ -425,7 +456,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <DataContext.Provider value={{ tasks, setTasks, logEntries, setLogEntries, removeTask, removeEntry, categories, addCategory, updateCategory, removeCategory, tags, addTag, setTagActive, renameTag, removeTag, settings, updateSettings, exportData, importData, resetData, addSampleData }}>
+    <DataContext.Provider value={{ tasks, setTasks, logEntries, setLogEntries, removeTask, removeEntry, categories, addCategory, updateCategory, removeCategory, tags, addTag, setTagActive, renameTag, removeTag, projects, addProject, updateProject, removeProject, settings, updateSettings, exportData, importData, resetData, addSampleData }}>
       {children}
       <SyncIndicator state={syncState} />
       {toast && (
