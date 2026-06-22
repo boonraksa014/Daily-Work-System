@@ -4,7 +4,6 @@ import { BookOpen, Zap, Target } from "lucide-react";
 import type { Task } from "@/components/KanbanBoard";
 import type { LogEntry } from "@/components/DailyLog";
 import type { View } from "@/types";
-import { PetCompanion } from "@/components/Pet";
 
 function greeting() {
   const h = new Date().getHours();
@@ -84,9 +83,6 @@ export function DashboardView({ tasks, logEntries, onNavigate }: DashboardViewPr
           </button>
         ))}
       </div>
-
-      {/* Pet companion */}
-      <PetCompanion tasks={tasks} logEntries={logEntries} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Active tasks */}

@@ -198,28 +198,6 @@
   to { transform: rotate(360deg); }
 }
 
-/* น้องสัตว์เลี้ยงเด้งตัวเบาๆ (เคารพ reduced-motion ผ่าน block ด้านล่าง) */
-@keyframes wt-bob {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-5px); }
-}
-
-/* น้องเดินไปมาขอบล่างจอ — translateX (เดิน) + scaleX (หันหน้าตามทิศ) */
-@keyframes wt-walk {
-  0%   { transform: translateX(0) scaleX(1); }
-  48%  { transform: translateX(calc(100vw - 64px)) scaleX(1); }
-  50%  { transform: translateX(calc(100vw - 64px)) scaleX(-1); }
-  98%  { transform: translateX(0) scaleX(-1); }
-  100% { transform: translateX(0) scaleX(1); }
-}
-/* น้องกระโดด (ใช้ตอนพฤติกรรม jump) */
-@keyframes wt-hop { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
-.wt-hop { animation: wt-hop 0.5s ease-in-out infinite; }
-/* น้องที่เดินเป็นของตกแต่งล้วน — ปิดเมื่อผู้ใช้ขอลดการเคลื่อนไหว */
-@media (prefers-reduced-motion: reduce) {
-  .wt-roam-pet { display: none !important; }
-}
-
 /* Keyboard focus ring, app-wide. Mouse clicks don't trigger it. */
 :where(button, a, input, textarea, select, [role="menuitem"], [tabindex]):focus-visible {
   outline: 2px solid var(--wt-focus);
