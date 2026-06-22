@@ -132,6 +132,7 @@ create table if not exists public.tasks (
   tags          text[] not null default '{}',
   due_date      date,
   project_id    uuid references public.projects (id) on delete set null,
+  category_id   uuid references public.categories (id) on delete set null,
   sort_order    int not null default 0,
   created_at    timestamptz not null default now(),
   created_by_id uuid default auth.uid() references auth.users (id) on delete set null,
@@ -142,6 +143,7 @@ create table if not exists public.tasks (
 );
 create index if not exists tasks_user_active_idx on public.tasks (user_id) where deleted_at is null;
 create index if not exists tasks_project_idx on public.tasks (project_id);
+create index if not exists tasks_category_idx on public.tasks (category_id);
 
 drop trigger if exists touch_tasks on public.tasks;
 create trigger touch_tasks before update on public.tasks

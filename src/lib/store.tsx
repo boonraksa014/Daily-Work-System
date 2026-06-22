@@ -65,7 +65,7 @@ interface DataContextValue {
 const DataContext = createContext<DataContextValue | null>(null);
 
 // ── รูปแบบที่ backend ส่งกลับ ───────────────────────────────────
-interface ApiTask { id: string; title: string; description: string | null; priority: Priority; status: Status; tags: string[] | null; dueDate: string | null; projectId: string | null; createdAt: string }
+interface ApiTask { id: string; title: string; description: string | null; priority: Priority; status: Status; tags: string[] | null; dueDate: string | null; projectId: string | null; categoryId: string | null; createdAt: string }
 interface ApiCategory { id: string; name: string; emoji: string; color: string; isActive: boolean }
 interface ApiTag { id: string; name: string; isActive: boolean }
 interface ApiProject { id: string; name: string; color: string; isActive: boolean }
@@ -74,7 +74,7 @@ interface ApiProfile { displayName: string; role: string; avatarColor: string; d
 
 // ── mappers: api → app ───────────────────────────────────────────
 function taskFromApi(r: ApiTask): Task {
-  return { id: r.id, title: r.title, description: r.description ?? undefined, priority: r.priority, status: r.status, tags: r.tags ?? [], createdAt: r.createdAt, dueDate: r.dueDate ?? undefined, projectId: r.projectId ?? undefined };
+  return { id: r.id, title: r.title, description: r.description ?? undefined, priority: r.priority, status: r.status, tags: r.tags ?? [], createdAt: r.createdAt, dueDate: r.dueDate ?? undefined, projectId: r.projectId ?? undefined, categoryId: r.categoryId ?? undefined };
 }
 function categoryFromApi(r: ApiCategory): Category {
   return { id: r.id, name: r.name, emoji: r.emoji, color: r.color, isActive: r.isActive };
@@ -91,7 +91,7 @@ function entryFromApi(r: ApiLog): LogEntry {
 
 // ── bodies: app → api (ใช้สร้าง snapshot สำหรับ diff ด้วย) ───────
 function taskBody(t: Task): Record<string, unknown> {
-  return { id: t.id, title: t.title, description: t.description ?? null, priority: t.priority, status: t.status, tags: t.tags, dueDate: t.dueDate ?? null, projectId: t.projectId ?? null };
+  return { id: t.id, title: t.title, description: t.description ?? null, priority: t.priority, status: t.status, tags: t.tags, dueDate: t.dueDate ?? null, projectId: t.projectId ?? null, categoryId: t.categoryId ?? null };
 }
 function categoryBody(c: Category): Record<string, unknown> {
   return { id: c.id, name: c.name, emoji: c.emoji, color: c.color, isActive: c.isActive };
