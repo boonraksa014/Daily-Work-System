@@ -151,6 +151,30 @@ async function syncCollection<T extends { id: string }>(
   return ok;
 }
 
+/** หน้าโหลด — ถ้าโหลดนานเกิน 8 วิ (เช่น backend กำลังตื่นจาก cold start) จะขึ้นข้อความอธิบายให้รอ */
+function LoadingScreen() {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setSlow(true), 8000);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <div className="flex flex-col items-center justify-center gap-5 px-6 text-center" role="status" aria-label="กำลังโหลด"
+      style={{ height: "100vh", background: "var(--wt-page)", fontFamily: "Nunito, 'Nunito Sans', system-ui, sans-serif" }}>
+      <Logo iconSize={44} />
+      <div className="flex items-center gap-2.5">
+        <span style={{ width: 18, height: 18, borderRadius: "50%", border: "2.5px solid var(--wt-border)", borderTopColor: "#7c3aed", display: "inline-block", animation: "wt-spin 0.7s linear infinite" }} />
+        <span style={{ fontSize: "0.85rem", color: "var(--wt-muted)", fontWeight: 600 }}>กำลังโหลดข้อมูล…</span>
+      </div>
+      {slow && (
+        <p style={{ fontSize: "0.8rem", color: "var(--wt-muted)", maxWidth: 320, lineHeight: 1.6 }}>
+          ⏳ เซิร์ฟเวอร์กำลังตื่นจากโหมดประหยัดพลังงาน อาจใช้เวลาสักครู่ (~1 นาที) ในการเปิดครั้งแรก — รออีกนิดนะครับ
+        </p>
+      )}
+    </div>
+  );
+}
+
 type SyncState = "idle" | "saving" | "saved" | "error";
 
 /** แถบสถานะการบันทึกขึ้น backend (มุมขวาล่าง) */
@@ -443,16 +467,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }
 
   if (!loaded) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-5" role="status" aria-label="กำลังโหลด"
-        style={{ height: "100vh", background: "var(--wt-page)", fontFamily: "Nunito, 'Nunito Sans', system-ui, sans-serif" }}>
-        <Logo iconSize={44} />
-        <div className="flex items-center gap-2.5">
-          <span style={{ width: 18, height: 18, borderRadius: "50%", border: "2.5px solid var(--wt-border)", borderTopColor: "#7c3aed", display: "inline-block", animation: "wt-spin 0.7s linear infinite" }} />
-          <span style={{ fontSize: "0.85rem", color: "var(--wt-muted)", fontWeight: 600 }}>กำลังโหลดข้อมูล…</span>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   return (
