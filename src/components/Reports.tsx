@@ -351,14 +351,14 @@ export function Reports({ logEntries, tasks, categories }: ReportsProps) {
                   <tr key={e.id} style={{ background: i % 2 === 0 ? "transparent" : "var(--wt-stripe)" }}>
                     <td className="py-3 pr-3" style={{ fontSize: "0.78rem", color: "var(--wt-muted)", whiteSpace: "nowrap", borderBottom: "1px solid var(--wt-soft2)" }}>{e.date}</td>
                     <td className="py-3 pr-3" style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--wt-text)", borderBottom: "1px solid var(--wt-soft2)" }}>{e.title}</td>
-                    <td className="py-3 pr-3" style={{ borderBottom: "1px solid var(--wt-soft2)" }}>
-                      <span className="px-2.5 py-1 rounded-full" style={{ background: "var(--wt-border)", color: "#5b21b6", fontSize: "0.7rem", fontWeight: 700 }}>{e.category}</span>
+                    <td className="py-3 pr-3" style={{ whiteSpace: "nowrap", borderBottom: "1px solid var(--wt-soft2)" }}>
+                      <span className="inline-block px-2.5 py-1 rounded-full" style={{ background: "var(--wt-border)", color: "#5b21b6", fontSize: "0.7rem", fontWeight: 700, whiteSpace: "nowrap" }}>{e.category}</span>
                     </td>
-                    <td className="py-3 pr-3" style={{ fontSize: "0.82rem", fontWeight: 800, color: "#7c3aed", textAlign: "right", borderBottom: "1px solid var(--wt-soft2)" }}>{e.hours}</td>
+                    <td className="py-3 pr-3" style={{ fontSize: "0.82rem", fontWeight: 800, color: "#7c3aed", textAlign: "right", whiteSpace: "nowrap", borderBottom: "1px solid var(--wt-soft2)" }}>{e.hours}</td>
                     <td className="py-3" style={{ textAlign: "center", borderBottom: "1px solid var(--wt-soft2)" }}>
                       {e.done
-                        ? <span className="px-2.5 py-1 rounded-full" style={{ background: "#d1fae5", color: "#065f46", fontSize: "0.7rem", fontWeight: 700 }}>✅ เสร็จ</span>
-                        : <span className="px-2.5 py-1 rounded-full" style={{ background: "#fef3c7", color: "#92400e", fontSize: "0.7rem", fontWeight: 700 }}>⏳ รอ</span>}
+                        ? <span className="inline-block px-2.5 py-1 rounded-full" style={{ background: "#d1fae5", color: "#065f46", fontSize: "0.7rem", fontWeight: 700, whiteSpace: "nowrap" }}>✅ เสร็จ</span>
+                        : <span className="inline-block px-2.5 py-1 rounded-full" style={{ background: "#fef3c7", color: "#92400e", fontSize: "0.7rem", fontWeight: 700, whiteSpace: "nowrap" }}>⏳ รอ</span>}
                     </td>
                   </tr>
                 ))}
