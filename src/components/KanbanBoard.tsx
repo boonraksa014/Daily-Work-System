@@ -142,11 +142,15 @@ interface TaskModalProps {
   availableTags: string[];
   availableProjects: Project[];
   availableCategories: Category[];
+  /** บันทึกรายวันที่ผูกกับงานนี้ (สำหรับแก้ชั่วโมงที่ลงไปแล้ว — เฉพาะตอนแก้งาน) */
+  taskLogs?: LogEntry[];
+  /** แก้ชั่วโมงของรายการบันทึกรายวันที่ผูกกับงานนี้ */
+  onUpdateLogHours?: (logId: string, hours: number) => void;
   onSubmit: (data: TaskDraft, log?: { hours: number }) => void;
   onClose: () => void;
 }
 
-function TaskModal({ status, initial, availableTags, availableProjects, availableCategories, onSubmit, onClose }: TaskModalProps) {
+function TaskModal({ status, initial, availableTags, availableProjects, availableCategories, taskLogs = [], onUpdateLogHours, onSubmit, onClose }: TaskModalProps) {
   const isEdit = !!initial;
   const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
@@ -157,6 +161,8 @@ function TaskModal({ status, initial, availableTags, availableProjects, availabl
   const [categoryId, setCategoryId] = useState(initial?.categoryId ?? "");
   const [alsoLog, setAlsoLog] = useState(false); // ลงเวลาที่ทำวันนี้ด้วย (เฉพาะตอนเพิ่มงานใหม่)
   const [logHours, setLogHours] = useState(1);
+  // ค่าชั่วโมงที่กำลังแก้ของแต่ละบันทึก (ยังไม่ apply จนกว่าจะกดบันทึก) — key = log id
+  const [logEdits, setLogEdits] = useState<Record<string, number>>({});
 
   // แสดงเฉพาะโปรเจกต์ที่เปิดใช้งาน — แต่คงโปรเจกต์ที่เลือกไว้แม้ถูกปิด (กรณีแก้งานเก่า)
   const pickableProjects = availableProjects.filter(p => p.isActive || p.id === projectId);
@@ -174,6 +180,13 @@ function TaskModal({ status, initial, availableTags, availableProjects, availabl
     if (!title.trim()) return;
     const log = !isEdit && alsoLog ? { hours: logHours } : undefined;
     onSubmit({ title: title.trim(), description: description.trim() || undefined, priority, status, tags, dueDate: dueDate || undefined, projectId: projectId || undefined, categoryId: categoryId || undefined }, log);
+    // apply การแก้ชั่วโมงของบันทึกที่ผูกกับงานนี้ (เฉพาะที่เปลี่ยนจริง)
+    if (isEdit && onUpdateLogHours) {
+      for (const l of taskLogs) {
+        const next = logEdits[l.id];
+        if (next !== undefined && next !== l.hours) onUpdateLogHours(l.id, next);
+      }
+    }
     onClose();
   }
 
@@ -309,6 +322,32 @@ function TaskModal({ status, initial, availableTags, availableProjects, availabl
                   <span style={{ fontSize: "0.78rem", color: "var(--wt-muted)" }}>ชม. (จะไปอยู่ในบันทึกรายวันของวันนี้)</span>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* แก้ชั่วโมงที่ลงให้งานนี้ก่อนหน้า — เฉพาะตอนแก้งาน และมีบันทึกที่ผูกไว้ */}
+          {isEdit && taskLogs.length > 0 && (
+            <div className="rounded-xl p-3" style={{ border: "2px solid var(--wt-border)", background: "var(--wt-soft)" }}>
+              <p style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--wt-text)" }}>⏱️ เวลาที่ลงให้งานนี้</p>
+              <div className="mt-2 space-y-2">
+                {[...taskLogs].sort((a, b) => b.date.localeCompare(a.date)).map(l => {
+                  const val = logEdits[l.id] ?? l.hours;
+                  return (
+                    <div key={l.id} className="flex items-center gap-2">
+                      <span style={{ fontSize: "0.78rem", color: "var(--wt-muted)", minWidth: 92 }}>{l.date}</span>
+                      <button type="button" aria-label="ลดชั่วโมง"
+                        onClick={() => setLogEdits(prev => ({ ...prev, [l.id]: Math.max(0.5, (prev[l.id] ?? l.hours) - 0.5) }))}
+                        className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--wt-border)", color: "#7c3aed", fontWeight: 800, fontSize: "1rem" }}>−</button>
+                      <span style={{ fontSize: "1rem", fontWeight: 800, color: "var(--wt-text)", minWidth: 40, textAlign: "center" }}>{val}</span>
+                      <button type="button" aria-label="เพิ่มชั่วโมง"
+                        onClick={() => setLogEdits(prev => ({ ...prev, [l.id]: Math.min(12, (prev[l.id] ?? l.hours) + 0.5) }))}
+                        className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--wt-border)", color: "#7c3aed", fontWeight: 800, fontSize: "1rem" }}>+</button>
+                      <span style={{ fontSize: "0.78rem", color: "var(--wt-muted)" }}>ชม.</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="mt-2" style={{ fontSize: "0.72rem", color: "var(--wt-muted)" }}>แก้แล้วกด “บันทึก” เพื่อยืนยัน</p>
             </div>
           )}
 
@@ -454,9 +493,11 @@ interface KanbanBoardProps {
   logEntries?: LogEntry[];
   /** ถ้าส่งมา: ตอนเพิ่มงานแล้วติ๊ก "ลงเวลาด้วย" จะเรียกเพื่อสร้างบันทึกรายวันให้งานนั้น */
   onLogTime?: (info: { taskId: string; title: string; hours: number; projectId?: string; categoryId?: string }) => void;
+  /** แก้ชั่วโมงของบันทึกรายวันที่ผูกกับงาน (ใช้ในหน้าแก้งาน) */
+  onUpdateLogHours?: (logId: string, hours: number) => void;
 }
 
-export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags = [], availableProjects = [], availableCategories = [], logEntries = [], onLogTime }: KanbanBoardProps) {
+export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags = [], availableProjects = [], availableCategories = [], logEntries = [], onLogTime, onUpdateLogHours }: KanbanBoardProps) {
   const [addingTo, setAddingTo] = useState<Status | null>(null);
   const [editing, setEditing] = useState<Task | null>(null);
   const [query, setQuery] = useState("");
@@ -689,7 +730,7 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags 
       {menu && <div className="fixed inset-0" style={{ zIndex: 55 }} onClick={() => setMenu(null)} />}
 
       {addingTo && <TaskModal status={addingTo} availableTags={availableTags} availableProjects={availableProjects} availableCategories={availableCategories} onSubmit={addTask} onClose={() => setAddingTo(null)} />}
-      {editing && <TaskModal status={editing.status} initial={editing} availableTags={availableTags} availableProjects={availableProjects} availableCategories={availableCategories} onSubmit={data => updateTask(editing.id, data)} onClose={() => setEditing(null)} />}
+      {editing && <TaskModal status={editing.status} initial={editing} availableTags={availableTags} availableProjects={availableProjects} availableCategories={availableCategories} taskLogs={logEntries.filter(e => e.taskId === editing.id)} onUpdateLogHours={onUpdateLogHours} onSubmit={data => updateTask(editing.id, data)} onClose={() => setEditing(null)} />}
     </div>
   );
 }

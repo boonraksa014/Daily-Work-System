@@ -45,3 +45,7 @@ Thumbs.db
 # Local Claude Code tooling / personal config (not project code)
 .claude/
 .impeccable/
+
+# Local docs / tooling (kept on machine, not committed)
+vault/
+obsidian-skills-main/

@@ -17,11 +17,16 @@ export default function KanbanPage() {
     setLogEntries(prev => [...prev, { id: makeId("log"), date: today, title, hours, category, taskId, projectId, done: false }]);
   }
 
+  // แก้ชั่วโมงของบันทึกรายวันที่ผูกกับงาน (จากหน้าแก้งานใน Kanban)
+  function handleUpdateLogHours(logId: string, hours: number) {
+    setLogEntries(prev => prev.map(e => e.id === logId ? { ...e, hours } : e));
+  }
+
   // คอลัมน์ต้องสูงเต็มพื้นที่เพื่อให้ scroll ภายในการ์ดทำงาน (หัก header + padding)
   return (
     <div style={{ height: "calc(100vh - 114px)" }}>
       <KanbanBoard tasks={tasks} onTasksChange={setTasks} onDeleteTask={removeTask}
-        availableTags={activeTags} availableProjects={projects} availableCategories={categories} logEntries={logEntries} onLogTime={handleLogTime} />
+        availableTags={activeTags} availableProjects={projects} availableCategories={categories} logEntries={logEntries} onLogTime={handleLogTime} onUpdateLogHours={handleUpdateLogHours} />
     </div>
   );
 }
