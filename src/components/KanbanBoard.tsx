@@ -146,11 +146,13 @@ interface TaskModalProps {
   taskLogs?: LogEntry[];
   /** แก้ชั่วโมงของรายการบันทึกรายวันที่ผูกกับงานนี้ */
   onUpdateLogHours?: (logId: string, hours: number) => void;
+  /** สร้างบันทึกรายวันของวันนี้ผูกกับงาน (ใช้ตอนแก้งานแล้วติ๊กลงเวลาวันนี้) */
+  onLogTime?: (info: { taskId: string; title: string; hours: number; projectId?: string; categoryId?: string }) => void;
   onSubmit: (data: TaskDraft, log?: { hours: number }) => void;
   onClose: () => void;
 }
 
-function TaskModal({ status, initial, availableTags, availableProjects, availableCategories, taskLogs = [], onUpdateLogHours, onSubmit, onClose }: TaskModalProps) {
+function TaskModal({ status, initial, availableTags, availableProjects, availableCategories, taskLogs = [], onUpdateLogHours, onLogTime, onSubmit, onClose }: TaskModalProps) {
   const isEdit = !!initial;
   const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
@@ -178,13 +180,20 @@ function TaskModal({ status, initial, availableTags, availableProjects, availabl
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
+    // ตอนเพิ่มงานใหม่: ส่ง log ไปให้ addTask สร้างบันทึกพร้อม id ของงานที่เพิ่งสร้าง
     const log = !isEdit && alsoLog ? { hours: logHours } : undefined;
     onSubmit({ title: title.trim(), description: description.trim() || undefined, priority, status, tags, dueDate: dueDate || undefined, projectId: projectId || undefined, categoryId: categoryId || undefined }, log);
-    // apply การแก้ชั่วโมงของบันทึกที่ผูกกับงานนี้ (เฉพาะที่เปลี่ยนจริง)
-    if (isEdit && onUpdateLogHours) {
-      for (const l of taskLogs) {
-        const next = logEdits[l.id];
-        if (next !== undefined && next !== l.hours) onUpdateLogHours(l.id, next);
+    if (isEdit && initial) {
+      // ติ๊กลงเวลาวันนี้ตอนแก้งาน → สร้างบันทึกใหม่ผูกกับงานนี้
+      if (alsoLog && onLogTime) {
+        onLogTime({ taskId: initial.id, title: title.trim(), hours: logHours, projectId: projectId || undefined, categoryId: categoryId || undefined });
+      }
+      // apply การแก้ชั่วโมงของบันทึกเดิมที่ผูกกับงานนี้ (เฉพาะที่เปลี่ยนจริง)
+      if (onUpdateLogHours) {
+        for (const l of taskLogs) {
+          const next = logEdits[l.id];
+          if (next !== undefined && next !== l.hours) onUpdateLogHours(l.id, next);
+        }
       }
     }
     onClose();
@@ -303,27 +312,25 @@ function TaskModal({ status, initial, availableTags, availableProjects, availabl
             )}
           </div>
 
-          {/* ลงเวลาที่ทำวันนี้ด้วย — เฉพาะตอนเพิ่มงานใหม่ */}
-          {!isEdit && (
-            <div className="rounded-xl p-3" style={{ border: "2px solid var(--wt-border)", background: "var(--wt-soft)" }}>
-              <label className="flex items-center gap-2.5 cursor-pointer">
-                <input type="checkbox" checked={alsoLog} onChange={e => setAlsoLog(e.target.checked)}
-                  style={{ width: 18, height: 18, accentColor: "#7c3aed", cursor: "pointer" }} />
-                <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--wt-text)" }}>⏱️ ลงเวลาที่ทำงานนี้วันนี้ด้วย</span>
-              </label>
-              {alsoLog && (
-                <div className="flex items-center gap-2 mt-3 ml-7">
-                  <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--wt-muted)" }}>ชั่วโมง</span>
-                  <button type="button" onClick={() => setLogHours(h => Math.max(0.5, h - 0.5))}
-                    className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--wt-border)", color: "#7c3aed", fontWeight: 800, fontSize: "1rem" }}>−</button>
-                  <span style={{ fontSize: "1rem", fontWeight: 800, color: "var(--wt-text)", minWidth: 40, textAlign: "center" }}>{logHours}</span>
-                  <button type="button" onClick={() => setLogHours(h => Math.min(12, h + 0.5))}
-                    className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--wt-border)", color: "#7c3aed", fontWeight: 800, fontSize: "1rem" }}>+</button>
-                  <span style={{ fontSize: "0.78rem", color: "var(--wt-muted)" }}>ชม. (จะไปอยู่ในบันทึกรายวันของวันนี้)</span>
-                </div>
-              )}
-            </div>
-          )}
+          {/* ลงเวลาที่ทำวันนี้ — มีทั้งตอนเพิ่มงานใหม่และตอนแก้งาน */}
+          <div className="rounded-xl p-3" style={{ border: "2px solid var(--wt-border)", background: "var(--wt-soft)" }}>
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <input type="checkbox" checked={alsoLog} onChange={e => setAlsoLog(e.target.checked)}
+                style={{ width: 18, height: 18, accentColor: "#7c3aed", cursor: "pointer" }} />
+              <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--wt-text)" }}>⏱️ ลงเวลาที่ทำงานนี้วันนี้</span>
+            </label>
+            {alsoLog && (
+              <div className="flex items-center gap-2 mt-3 ml-7">
+                <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--wt-muted)" }}>ชั่วโมง</span>
+                <button type="button" onClick={() => setLogHours(h => Math.max(0.5, h - 0.5))}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--wt-border)", color: "#7c3aed", fontWeight: 800, fontSize: "1rem" }}>−</button>
+                <span style={{ fontSize: "1rem", fontWeight: 800, color: "var(--wt-text)", minWidth: 40, textAlign: "center" }}>{logHours}</span>
+                <button type="button" onClick={() => setLogHours(h => Math.min(12, h + 0.5))}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--wt-border)", color: "#7c3aed", fontWeight: 800, fontSize: "1rem" }}>+</button>
+                <span style={{ fontSize: "0.78rem", color: "var(--wt-muted)" }}>ชม. (จะไปอยู่ในบันทึกรายวันของวันนี้)</span>
+              </div>
+            )}
+          </div>
 
           {/* แก้ชั่วโมงที่ลงให้งานนี้ก่อนหน้า — เฉพาะตอนแก้งาน และมีบันทึกที่ผูกไว้ */}
           {isEdit && taskLogs.length > 0 && (
@@ -730,7 +737,7 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags 
       {menu && <div className="fixed inset-0" style={{ zIndex: 55 }} onClick={() => setMenu(null)} />}
 
       {addingTo && <TaskModal status={addingTo} availableTags={availableTags} availableProjects={availableProjects} availableCategories={availableCategories} onSubmit={addTask} onClose={() => setAddingTo(null)} />}
-      {editing && <TaskModal status={editing.status} initial={editing} availableTags={availableTags} availableProjects={availableProjects} availableCategories={availableCategories} taskLogs={logEntries.filter(e => e.taskId === editing.id)} onUpdateLogHours={onUpdateLogHours} onSubmit={data => updateTask(editing.id, data)} onClose={() => setEditing(null)} />}
+      {editing && <TaskModal status={editing.status} initial={editing} availableTags={availableTags} availableProjects={availableProjects} availableCategories={availableCategories} taskLogs={logEntries.filter(e => e.taskId === editing.id)} onUpdateLogHours={onUpdateLogHours} onLogTime={onLogTime} onSubmit={data => updateTask(editing.id, data)} onClose={() => setEditing(null)} />}
     </div>
   );
 }
