@@ -198,6 +198,25 @@ function SingleSelect({ value, onChange, options, ariaLabel }: { value: string; 
   );
 }
 
+/** ตัวปรับชั่วโมงแบบ pill (− ค่า ชม. +) ใช้ร่วมกันในหลายที่ของ modal */
+function HoursStepper({ value, onChange }: { value: number; onChange: (next: number) => void }) {
+  const hover = (on: boolean) => (e: React.MouseEvent<HTMLButtonElement>) => (e.currentTarget.style.background = on ? "var(--wt-soft2)" : "transparent");
+  return (
+    <div className="inline-flex items-center gap-0.5 rounded-xl p-1 shrink-0" style={{ background: "var(--wt-card)", border: "1px solid var(--wt-border)" }}>
+      <button type="button" aria-label="ลดชั่วโมง" onClick={() => onChange(Math.max(0.5, value - 0.5))}
+        className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors" style={{ color: "#7c3aed", fontWeight: 800, fontSize: "1.2rem", lineHeight: 1 }}
+        onMouseEnter={hover(true)} onMouseLeave={hover(false)}>−</button>
+      <span className="flex items-baseline justify-center gap-1" style={{ minWidth: 58 }}>
+        <span style={{ fontSize: "1.05rem", fontWeight: 800, color: "var(--wt-text)" }}>{value}</span>
+        <span style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--wt-muted)" }}>ชม.</span>
+      </span>
+      <button type="button" aria-label="เพิ่มชั่วโมง" onClick={() => onChange(Math.min(12, value + 0.5))}
+        className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors" style={{ color: "#7c3aed", fontWeight: 800, fontSize: "1.2rem", lineHeight: 1 }}
+        onMouseEnter={hover(true)} onMouseLeave={hover(false)}>+</button>
+    </div>
+  );
+}
+
 interface TaskModalProps {
   status: Status;
   initial?: Task;
@@ -379,21 +398,22 @@ function TaskModal({ status, initial, availableTags, availableProjects, availabl
           </div>
 
           {/* ลงเวลาที่ทำวันนี้ — มีทั้งตอนเพิ่มงานใหม่และตอนแก้งาน */}
-          <div className="rounded-xl p-3" style={{ border: "2px solid var(--wt-border)", background: "var(--wt-soft)" }}>
-            <label className="flex items-center gap-2.5 cursor-pointer">
-              <input type="checkbox" checked={alsoLog} onChange={e => setAlsoLog(e.target.checked)}
-                style={{ width: 18, height: 18, accentColor: "#7c3aed", cursor: "pointer" }} />
-              <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--wt-text)" }}>⏱️ ลงเวลาที่ทำงานนี้วันนี้</span>
+          <div className="rounded-2xl p-3.5 transition-colors"
+            style={{ border: `2px solid ${alsoLog ? "#c4b5fd" : "var(--wt-border)"}`, background: alsoLog ? "rgba(124,58,237,0.05)" : "var(--wt-soft)" }}>
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <input type="checkbox" checked={alsoLog} onChange={e => setAlsoLog(e.target.checked)} className="sr-only" />
+              <span className="inline-flex items-center justify-center rounded-lg shrink-0 transition-all"
+                style={{ width: 22, height: 22, border: `2px solid ${alsoLog ? "#7c3aed" : "var(--wt-border)"}`, background: alsoLog ? "#7c3aed" : "var(--wt-card)" }}>
+                {alsoLog && <Check size={14} color="#fff" strokeWidth={3} />}
+              </span>
+              <span className="flex items-center gap-1.5" style={{ fontSize: "0.88rem", fontWeight: 700, color: "var(--wt-text)" }}>
+                <span style={{ fontSize: "1rem" }}>⏱️</span> ลงเวลาที่ทำงานนี้วันนี้
+              </span>
             </label>
             {alsoLog && (
-              <div className="flex items-center gap-2 mt-3 ml-7">
-                <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--wt-muted)" }}>ชั่วโมง</span>
-                <button type="button" onClick={() => setLogHours(h => Math.max(0.5, h - 0.5))}
-                  className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--wt-border)", color: "#7c3aed", fontWeight: 800, fontSize: "1rem" }}>−</button>
-                <span style={{ fontSize: "1rem", fontWeight: 800, color: "var(--wt-text)", minWidth: 40, textAlign: "center" }}>{logHours}</span>
-                <button type="button" onClick={() => setLogHours(h => Math.min(12, h + 0.5))}
-                  className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--wt-border)", color: "#7c3aed", fontWeight: 800, fontSize: "1rem" }}>+</button>
-                <span style={{ fontSize: "0.78rem", color: "var(--wt-muted)" }}>ชม. (จะไปอยู่ในบันทึกรายวันของวันนี้)</span>
+              <div className="flex items-center gap-3 mt-3.5 flex-wrap" style={{ marginLeft: 34 }}>
+                <HoursStepper value={logHours} onChange={setLogHours} />
+                <span style={{ fontSize: "0.74rem", color: "var(--wt-muted)" }}>จะไปอยู่ในบันทึกรายวันของวันนี้</span>
               </div>
             )}
           </div>
@@ -406,16 +426,9 @@ function TaskModal({ status, initial, availableTags, availableProjects, availabl
                 {[...taskLogs].sort((a, b) => b.date.localeCompare(a.date)).map(l => {
                   const val = logEdits[l.id] ?? l.hours;
                   return (
-                    <div key={l.id} className="flex items-center gap-2">
+                    <div key={l.id} className="flex items-center gap-3">
                       <span style={{ fontSize: "0.78rem", color: "var(--wt-muted)", minWidth: 92 }}>{l.date}</span>
-                      <button type="button" aria-label="ลดชั่วโมง"
-                        onClick={() => setLogEdits(prev => ({ ...prev, [l.id]: Math.max(0.5, (prev[l.id] ?? l.hours) - 0.5) }))}
-                        className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--wt-border)", color: "#7c3aed", fontWeight: 800, fontSize: "1rem" }}>−</button>
-                      <span style={{ fontSize: "1rem", fontWeight: 800, color: "var(--wt-text)", minWidth: 40, textAlign: "center" }}>{val}</span>
-                      <button type="button" aria-label="เพิ่มชั่วโมง"
-                        onClick={() => setLogEdits(prev => ({ ...prev, [l.id]: Math.min(12, (prev[l.id] ?? l.hours) + 0.5) }))}
-                        className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--wt-border)", color: "#7c3aed", fontWeight: 800, fontSize: "1rem" }}>+</button>
-                      <span style={{ fontSize: "0.78rem", color: "var(--wt-muted)" }}>ชม.</span>
+                      <HoursStepper value={val} onChange={(next) => setLogEdits(prev => ({ ...prev, [l.id]: next }))} />
                     </div>
                   );
                 })}
