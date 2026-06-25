@@ -175,6 +175,48 @@ function LoadingScreen() {
   );
 }
 
+// ── buffer ใน localStorage: กันข้อมูลที่ยังไม่ซิงก์หายเมื่อรีเฟรช/ปิดแท็บ ──
+const BUFFER_PREFIX = "taskflow:buffer:";
+
+interface LocalBuffer {
+  userId: string;
+  dirty: boolean; // ยังมีอะไรที่ยังไม่ขึ้น backend ไหม
+  tasks: Task[];
+  logEntries: LogEntry[];
+  categories: Category[];
+  tags: Tag[];
+  projects: Project[];
+  settings: AppSettings;
+}
+
+function readBuffer(userId: string): LocalBuffer | null {
+  try {
+    const raw = localStorage.getItem(BUFFER_PREFIX + userId);
+    if (!raw) return null;
+    const b = JSON.parse(raw) as LocalBuffer;
+    return b && b.userId === userId ? b : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeBuffer(b: LocalBuffer) {
+  try {
+    localStorage.setItem(BUFFER_PREFIX + b.userId, JSON.stringify(b));
+  } catch {
+    /* quota เต็มหรือ localStorage ถูกปิด — ข้ามไป (ยังมี retry บน backend อยู่แล้ว) */
+  }
+}
+
+/** collection ปัจจุบันต่างจาก snapshot บน backend ไหม (= ยังไม่ซิงก์) */
+function isCollectionDirty<T extends { id: string }>(items: T[], snap: Map<string, string>, toBody: (i: T) => Record<string, unknown>): boolean {
+  if (items.length !== snap.size) return true;
+  for (const it of items) {
+    if (snap.get(it.id) !== JSON.stringify(toBody(it))) return true;
+  }
+  return false;
+}
+
 type SyncState = "idle" | "saving" | "saved" | "error";
 
 /** แถบสถานะการบันทึกขึ้น backend (มุมขวาล่าง) */
@@ -220,6 +262,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const tagSnap = useRef(new Map<string, string>());
   const projectSnap = useRef(new Map<string, string>());
   const settingsSnap = useRef<string>("");
+  const dirtyRef = useRef(false); // ยังมีข้อมูลที่ยังไม่ซิงก์ไหม (ใช้กับ beforeunload)
 
   // อัปเดตสถานะการบันทึก + ตั้งลองใหม่อัตโนมัติเมื่อล้มเหลว
   function finishSync(ok: boolean) {
@@ -282,12 +325,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
         const projDefs: Project[] = (projsRes?.projects ?? []).map(projectFromApi);
 
-        setCategories(cats);
-        setTagDefs(tagDefs);
-        setProjectDefs(projDefs);
-        setTasks(tks);
-        setLogEntries(ents);
-
         // snapshot = สิ่งที่อยู่บน backend แล้วเท่านั้น (cats ที่ seed / tags ที่ import ใหม่ ไม่อยู่ใน snapshot → effect จะ POST ให้)
         const catIdByName = new Map(cats.map(c => [c.name, c.id]));
         catSnap.current = new Map(serverCats.map(c => [c.id, JSON.stringify(categoryBody(c))]));
@@ -295,6 +332,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
         projectSnap.current = new Map(projDefs.map(p => [p.id, JSON.stringify(projectBody(p))]));
         taskSnap.current = new Map(tks.map(t => [t.id, JSON.stringify(taskBody(t))]));
         entrySnap.current = new Map(ents.map(e => [e.id, JSON.stringify(entryBody(e, catIdByName))]));
+
+        // B: ถ้ามี buffer ใน localStorage ที่ยังไม่ซิงก์ → กู้คืนมาใช้แทน server
+        // (snapshot ยังเป็น server เพื่อให้ sync effect ดันส่วนต่างที่ค้างขึ้นไปต่อ)
+        const buf = readBuffer(user.id);
+        if (buf && buf.dirty) {
+          setCategories(buf.categories);
+          setTagDefs(buf.tags);
+          setProjectDefs(buf.projects);
+          setTasks(buf.tasks);
+          setLogEntries(buf.logEntries);
+          setSettings(buf.settings);
+        } else {
+          setCategories(cats);
+          setTagDefs(tagDefs);
+          setProjectDefs(projDefs);
+          setTasks(tks);
+          setLogEntries(ents);
+          // settings ตั้งไว้แล้วด้านบน
+        }
 
         setLoaded(true);
       } catch (e) {
@@ -344,6 +400,36 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings, loaded, user, getToken]);
+
+  // ── B: เก็บ buffer ลง localStorage (กันข้อมูลที่ยังไม่ซิงก์หายเมื่อรีเฟรช/ปิดแท็บ) ──
+  useEffect(() => {
+    if (!user || !loaded || loadError) return;
+    const catIdByName = new Map(categories.map(c => [c.name, c.id]));
+    const dirty =
+      isCollectionDirty(tasks, taskSnap.current, taskBody) ||
+      isCollectionDirty(logEntries, entrySnap.current, e => entryBody(e, catIdByName)) ||
+      isCollectionDirty(categories, catSnap.current, categoryBody) ||
+      isCollectionDirty(tags, tagSnap.current, tagBody) ||
+      isCollectionDirty(projects, projectSnap.current, projectBody) ||
+      JSON.stringify(profileBody(settings)) !== settingsSnap.current;
+    dirtyRef.current = dirty; // อัปเดตทันที เพื่อให้ beforeunload แม่นยำ
+    const t = setTimeout(() => {
+      writeBuffer({ userId: user.id, dirty, tasks, logEntries, categories, tags, projects, settings });
+    }, 300);
+    return () => clearTimeout(t);
+  }, [tasks, logEntries, categories, tags, projects, settings, syncState, loaded, user, loadError]);
+
+  // ── A: เตือนก่อนปิด/รีเฟรชถ้ายังบันทึกขึ้น backend ไม่เสร็จ ──
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (dirtyRef.current) {
+        e.preventDefault();
+        e.returnValue = ""; // เบราว์เซอร์จะขึ้นกล่องยืนยันมาตรฐาน
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, []);
 
   useEffect(() => () => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
