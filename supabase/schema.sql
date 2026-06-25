@@ -133,6 +133,7 @@ create table if not exists public.tasks (
   due_date      date,
   project_id    uuid references public.projects (id) on delete set null,
   category_id   uuid references public.categories (id) on delete set null,
+  completed_at  date,
   sort_order    int not null default 0,
   created_at    timestamptz not null default now(),
   created_by_id uuid default auth.uid() references auth.users (id) on delete set null,

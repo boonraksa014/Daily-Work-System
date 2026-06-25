@@ -22,7 +22,11 @@ export interface Task {
   dueDate?: string;
   projectId?: string; // โปรเจกต์ที่งานนี้สังกัด (ถ้ามี)
   categoryId?: string; // หมวดหมู่ของงานนี้ (ถ้ามี)
+  completedAt?: string; // วันที่ย้ายเข้า "เสร็จสิ้น" (ใช้ซ่อนงานที่เสร็จเกิน 5 วัน)
 }
+
+// คอลัมน์ "เสร็จสิ้น" แสดงเฉพาะงานที่เสร็จภายในกี่วันล่าสุด (นับจากวันที่เสร็จ)
+const DONE_VISIBLE_DAYS = 5;
 
 const PRIORITY_CONFIG: Record<Priority, { label: string; bg: string; text: string; dot: string }> = {
   low:    { label: "ต่ำ",  bg: "#d1fae5", text: "#065f46", dot: "#34d399" },
@@ -549,7 +553,9 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags 
 
   function addTask(data: TaskDraft, log?: { hours: number }) {
     const id = makeId("task");
-    onTasksChange([...tasks, { ...data, id, createdAt: new Date().toISOString().split("T")[0] }]);
+    // ถ้าเพิ่มเข้าคอลัมน์ "เสร็จสิ้น" เลย → ตั้งวันที่เสร็จเป็นวันนี้
+    const completedAt = data.status === "done" ? todayStr() : undefined;
+    onTasksChange([...tasks, { ...data, id, createdAt: todayStr(), completedAt }]);
     // ติ๊ก "ลงเวลาด้วย" → สร้างบันทึกรายวันของวันนี้ที่ผูกกับงานนี้
     if (log && onLogTime) onLogTime({ taskId: id, title: data.title, hours: log.hours, projectId: data.projectId, categoryId: data.categoryId });
   }
@@ -562,7 +568,15 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags 
     if (onDeleteTask) onDeleteTask(id);
     else onTasksChange(tasks.filter(t => t.id !== id));
   }
-  function moveTask(id: string, status: Status) { onTasksChange(tasks.map(t => t.id === id ? { ...t, status } : t)); }
+  function moveTask(id: string, status: Status) {
+    onTasksChange(tasks.map(t => {
+      if (t.id !== id || t.status === status) return t;
+      // เข้า done → บันทึกวันที่เสร็จ; ออกจาก done → ล้างวันที่เสร็จ
+      if (status === "done") return { ...t, status, completedAt: todayStr() };
+      if (t.status === "done") return { ...t, status, completedAt: undefined };
+      return { ...t, status };
+    }));
+  }
 
   function handleDrop(status: Status) {
     if (draggingId) moveTask(draggingId, status);
@@ -582,6 +596,16 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags 
     (!q || t.title.toLowerCase().includes(q) || (t.description?.toLowerCase().includes(q) ?? false) || t.tags.some(tag => tag.toLowerCase().includes(q)))
     && (priFilter.length === 0 || priFilter.includes(t.priority))
     && (tagFilter.length === 0 || t.tags.some(tag => tagFilter.includes(tag)));
+
+  // คอลัมน์ "เสร็จสิ้น" โชว์เฉพาะงานที่เสร็จภายใน DONE_VISIBLE_DAYS วันล่าสุด
+  // (งานเก่าที่ไม่มี completedAt ใช้ createdAt เป็นตัวแทน) — งานที่ซ่อนยังอยู่ในระบบ แค่ไม่แสดงบนบอร์ด
+  const doneCutoff = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - (DONE_VISIBLE_DAYS - 1));
+    return d.toISOString().split("T")[0];
+  })();
+  const inColumn = (t: Task, colId: Status) =>
+    t.status === colId && (colId !== "done" || (t.completedAt ?? t.createdAt) >= doneCutoff);
 
   const MENU_WIDTH = 176;
   const menuLeft = menu ? Math.max(8, Math.min(menu.x - MENU_WIDTH, window.innerWidth - MENU_WIDTH - 8)) : 0;
@@ -650,8 +674,8 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags 
       <div className="flex gap-4 flex-1 min-h-0 overflow-x-auto pb-2">
         {STATUSES.map(colId => {
           const col = COLUMN_CONFIG[colId];
-          const colTasks = tasks.filter(t => t.status === colId && matches(t));
-          const totalInCol = tasks.filter(t => t.status === colId).length;
+          const colTasks = tasks.filter(t => inColumn(t, colId) && matches(t));
+          const totalInCol = tasks.filter(t => inColumn(t, colId)).length;
           const isOver = dragOverCol === colId;
 
           return (
