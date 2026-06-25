@@ -6,6 +6,7 @@ import { makeId } from "../lib/id";
 import type { Category, Project } from "../types";
 import type { Task } from "./KanbanBoard";
 import { DatePicker } from "./DatePicker";
+import { SingleSelect } from "./SingleSelect";
 
 export interface LogEntry {
   id: string;
@@ -135,14 +136,15 @@ function EntryForm({ date, initial, categories, tasks, projects, onSubmit, onCan
         {tasks.length > 0 && (
           <div>
             <p style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--wt-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>งานที่เกี่ยวข้อง (ไม่บังคับ)</p>
-            <select value={taskId} onChange={e => pickTask(e.target.value)} aria-label="ผูกกับงาน"
-              className="w-full px-3 py-2.5 rounded-xl outline-none"
-              style={{ border: "2px solid var(--wt-border)", background: "var(--wt-soft)", color: "var(--wt-text)", fontFamily: "inherit", fontSize: "0.85rem" }}>
-              <option value="">— ไม่ผูกกับงาน —</option>
-              {pickableTasks.map(t => (
-                <option key={t.id} value={t.id}>{t.status === "inprogress" ? "⚡ " : t.status === "done" ? "✅ " : "📋 "}{t.title}</option>
-              ))}
-            </select>
+            <SingleSelect ariaLabel="ผูกกับงาน" value={taskId} onChange={pickTask}
+              options={[
+                { value: "", label: "— ไม่ผูกกับงาน —" },
+                ...pickableTasks.map(t => ({
+                  value: t.id,
+                  label: t.title,
+                  icon: <span style={{ fontSize: "0.95rem", lineHeight: 1 }}>{t.status === "inprogress" ? "⚡" : t.status === "done" ? "✅" : "📋"}</span>,
+                })),
+              ]} />
           </div>
         )}
 
@@ -150,14 +152,16 @@ function EntryForm({ date, initial, categories, tasks, projects, onSubmit, onCan
         {projects.length > 0 && (
           <div>
             <p style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--wt-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>โปรเจกต์ (ไม่บังคับ)</p>
-            <select value={projectId} onChange={e => setProjectId(e.target.value)} aria-label="โปรเจกต์"
-              className="w-full px-3 py-2.5 rounded-xl outline-none"
-              style={{ border: "2px solid var(--wt-border)", background: "var(--wt-soft)", color: "var(--wt-text)", fontFamily: "inherit", fontSize: "0.85rem" }}>
-              <option value="">— ไม่ระบุโปรเจกต์ —</option>
-              {pickableProjects.map(p => (
-                <option key={p.id} value={p.id}>{p.name}{!p.isActive ? " (ปิดใช้งาน)" : ""}</option>
-              ))}
-            </select>
+            <SingleSelect ariaLabel="โปรเจกต์" value={projectId} onChange={setProjectId}
+              options={[
+                { value: "", label: "— ไม่ระบุโปรเจกต์ —" },
+                ...pickableProjects.map(p => ({
+                  value: p.id,
+                  label: p.name + (!p.isActive ? " (ปิดใช้งาน)" : ""),
+                  icon: <span className="inline-block rounded-full" style={{ width: 11, height: 11, background: p.color }} />,
+                  dim: !p.isActive,
+                })),
+              ]} />
           </div>
         )}
 

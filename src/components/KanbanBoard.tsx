@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Plus, MoreHorizontal, Clock, Trash2, X, Sparkles, Pencil, Search, ChevronDown, Check } from "lucide-react";
 import { makeId } from "../lib/id";
 import { DatePicker } from "./DatePicker";
+import { SingleSelect } from "./SingleSelect";
 import type { LogEntry } from "./DailyLog";
 import type { Project, Category } from "../types";
 
@@ -126,68 +127,6 @@ function TagMultiSelect({ options, value, onChange }: { options: string[]; value
                     {checked && <Check size={11} color="#fff" />}
                   </span>
                   <span style={{ fontSize: "0.84rem", fontWeight: 600, color: "var(--wt-text)" }}>{t}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-interface SelectOption {
-  value: string;
-  label: string;
-  icon?: React.ReactNode; // emoji หรือจุดสี (ถ้ามี)
-  dim?: boolean; // จาง (เช่น รายการที่ปิดใช้งาน)
-}
-
-/** dropdown เลือกค่าเดียว สไตล์เข้าธีมแอป (แทน <select> ของระบบที่ปรับหน้าตาไม่ได้) */
-function SingleSelect({ value, onChange, options, ariaLabel }: { value: string; onChange: (v: string) => void; options: SelectOption[]; ariaLabel?: string }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
-    window.addEventListener("mousedown", onDown);
-    window.addEventListener("keydown", onKey);
-    return () => { window.removeEventListener("mousedown", onDown); window.removeEventListener("keydown", onKey); };
-  }, [open]);
-
-  const selected = options.find(o => o.value === value) ?? options[0];
-  const isPlaceholder = !value;
-
-  return (
-    <div className="relative mt-1" ref={ref}>
-      <button type="button" onClick={() => setOpen(o => !o)} aria-haspopup="listbox" aria-expanded={open} aria-label={ariaLabel}
-        className="w-full px-3 py-2.5 rounded-xl outline-none flex items-center justify-between gap-2 transition-colors"
-        style={{ ...inputStyle, fontSize: "0.85rem", borderColor: open ? "#a78bfa" : "var(--wt-border)" }}>
-        <span className="flex items-center gap-2 min-w-0" style={{ color: isPlaceholder ? "var(--wt-muted)" : "var(--wt-text)", fontWeight: isPlaceholder ? 400 : 600 }}>
-          {!isPlaceholder && selected?.icon && <span className="flex items-center justify-center shrink-0" style={{ width: 18 }}>{selected.icon}</span>}
-          <span className="truncate">{selected?.label}</span>
-        </span>
-        <ChevronDown size={16} style={{ color: "var(--wt-muted)", transform: open ? "rotate(180deg)" : "none", transition: "transform .15s", flexShrink: 0 }} />
-      </button>
-
-      {open && (
-        <div role="listbox" className="mt-1.5 rounded-xl overflow-hidden"
-          style={{ background: "var(--wt-card)", border: "1px solid var(--wt-border)", boxShadow: "0 14px 36px rgba(76,29,149,0.22)", animation: "wt-pop-in 0.14s ease-out" }}>
-          <div style={{ maxHeight: 248, overflowY: "auto" }}>
-            {options.map(o => {
-              const sel = o.value === value;
-              return (
-                <button key={o.value || "__empty"} type="button" role="option" aria-selected={sel}
-                  onClick={() => { onChange(o.value); setOpen(false); }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors"
-                  style={{ background: sel ? "var(--wt-soft2)" : "transparent", opacity: o.dim ? 0.55 : 1 }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "var(--wt-soft2)")}
-                  onMouseLeave={e => (e.currentTarget.style.background = sel ? "var(--wt-soft2)" : "transparent")}>
-                  <span className="flex items-center justify-center shrink-0" style={{ width: 18 }}>{o.icon}</span>
-                  <span className="flex-1 truncate" style={{ fontSize: "0.85rem", fontWeight: sel ? 700 : 500, color: o.value ? "var(--wt-text)" : "var(--wt-muted)" }}>{o.label}</span>
-                  {sel && <Check size={15} color="#7c3aed" className="shrink-0" />}
                 </button>
               );
             })}
@@ -350,7 +289,7 @@ function TaskModal({ status, initial, availableTags, availableProjects, availabl
           {availableCategories.length > 0 && (
             <div>
               <label style={labelStyle}>หมวดหมู่</label>
-              <SingleSelect ariaLabel="หมวดหมู่" value={categoryId} onChange={setCategoryId}
+              <SingleSelect ariaLabel="หมวดหมู่" value={categoryId} onChange={setCategoryId} style={{ marginTop: 4 }}
                 options={[
                   { value: "", label: "— ไม่ระบุหมวดหมู่ —" },
                   ...pickableCategories.map(c => ({
@@ -366,7 +305,7 @@ function TaskModal({ status, initial, availableTags, availableProjects, availabl
           {availableProjects.length > 0 && (
             <div>
               <label style={labelStyle}>โปรเจกต์</label>
-              <SingleSelect ariaLabel="โปรเจกต์" value={projectId} onChange={setProjectId}
+              <SingleSelect ariaLabel="โปรเจกต์" value={projectId} onChange={setProjectId} style={{ marginTop: 4 }}
                 options={[
                   { value: "", label: "— ไม่ระบุโปรเจกต์ —" },
                   ...pickableProjects.map(p => ({

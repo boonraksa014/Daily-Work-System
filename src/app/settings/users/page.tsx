@@ -5,6 +5,7 @@ import { Plus, Trash2, ShieldCheck, User as UserIcon, ToggleLeft, ToggleRight, E
 import { useAuth } from "@/lib/auth";
 import { apiFetch } from "@/lib/api";
 import { useConfirm } from "@/components/ConfirmDialog";
+import { SingleSelect } from "@/components/SingleSelect";
 
 interface ManagedUser {
   id: string;
@@ -133,11 +134,13 @@ export default function UsersSettingsPage() {
           </div>
           <div>
             <label style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--wt-muted)", textTransform: "uppercase" }}>สิทธิ์</label>
-            <select value={role} onChange={e => setRole(e.target.value as "admin" | "user")}
-              className="block mt-1 px-3 py-2.5 rounded-xl outline-none" style={inputStyle}>
-              <option value="user">ผู้ใช้</option>
-              <option value="admin">แอดมิน</option>
-            </select>
+            <div className="mt-1">
+              <SingleSelect ariaLabel="สิทธิ์" value={role} onChange={v => setRole(v as "admin" | "user")} style={{ minWidth: 150 }}
+                options={[
+                  { value: "user", label: "ผู้ใช้", icon: <UserIcon size={14} /> },
+                  { value: "admin", label: "แอดมิน", icon: <ShieldCheck size={14} /> },
+                ]} />
+            </div>
           </div>
           <button type="submit" disabled={creating} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl transition-opacity"
             style={{ background: "linear-gradient(135deg, #7c3aed, #a855f7)", color: "#fff", fontSize: "0.85rem", fontWeight: 800, border: "none", opacity: creating ? 0.6 : 1 }}>
@@ -171,12 +174,12 @@ export default function UsersSettingsPage() {
                   onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
                   {u.active ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
                 </button>
-                <select value={u.role} onChange={e => setUserRole(u.id, e.target.value as "admin" | "user")} disabled={self}
-                  aria-label={`สิทธิ์ของ ${u.email}`}
-                  className="px-2.5 py-1.5 rounded-lg outline-none shrink-0" style={{ ...inputStyle, fontSize: "0.78rem", opacity: self ? 0.5 : 1 }}>
-                  <option value="user">ผู้ใช้</option>
-                  <option value="admin">แอดมิน</option>
-                </select>
+                <SingleSelect compact disabled={self} ariaLabel={`สิทธิ์ของ ${u.email}`} style={{ flexShrink: 0 }}
+                  value={u.role} onChange={v => setUserRole(u.id, v as "admin" | "user")}
+                  options={[
+                    { value: "user", label: "ผู้ใช้", icon: <UserIcon size={13} /> },
+                    { value: "admin", label: "แอดมิน", icon: <ShieldCheck size={13} /> },
+                  ]} />
                 <button onClick={() => removeUser(u.id, u.email)} disabled={self} aria-label={`ลบ ${u.email}`}
                   className="p-2 rounded-xl transition-colors shrink-0" style={{ color: "#f43f5e", opacity: self ? 0.3 : 1 }}
                   onMouseEnter={e => { if (!self) e.currentTarget.style.background = "rgba(244,63,94,0.1)"; }}
