@@ -3,9 +3,9 @@
 import { useState } from "react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend, BarChart, Bar
+  PieChart, Pie, Cell, Legend
 } from "recharts";
-import { TrendingUp, Clock, CheckCircle2, BarChart2, Target, Award, Zap } from "lucide-react";
+import { TrendingUp, Clock, CheckCircle2, Target, Award, Zap } from "lucide-react";
 import type { LogEntry } from "./DailyLog";
 import type { Task } from "./KanbanBoard";
 import type { Category } from "@/types";
@@ -207,10 +207,8 @@ export function Reports({ logEntries, tasks, categories }: ReportsProps) {
         </div>
       </div>
 
-      {/* Task status + Bar chart row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Task status */}
-        <div className="bg-white rounded-2xl p-5" style={{ border: "2px solid var(--wt-border)", boxShadow: "0 4px 16px rgba(124,58,237,0.08)" }}>
+      {/* Task status */}
+      <div className="bg-white rounded-2xl p-5" style={{ border: "2px solid var(--wt-border)", boxShadow: "0 4px 16px rgba(124,58,237,0.08)" }}>
           <div className="flex items-center gap-2 mb-5">
             <div className="p-2 rounded-xl" style={{ background: "linear-gradient(135deg, #059669, #34d399)" }}>
               <CheckCircle2 size={14} style={{ color: "white" }} />
@@ -248,42 +246,6 @@ export function Reports({ logEntries, tasks, categories }: ReportsProps) {
             </div>
           )}
         </div>
-
-        {/* Daily done bar chart */}
-        <div className="bg-white rounded-2xl p-5" style={{ border: "2px solid var(--wt-border)", boxShadow: "0 4px 16px rgba(124,58,237,0.08)" }}>
-          <div className="flex items-center gap-2 mb-4">
-            <div className="p-2 rounded-xl" style={{ background: "linear-gradient(135deg, #d97706, #fbbf24)" }}>
-              <BarChart2 size={14} style={{ color: "white" }} />
-            </div>
-            <div>
-              <p style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--wt-text)" }}>งานสำเร็จรายวัน</p>
-              <p style={{ fontSize: "0.72rem", color: "var(--wt-muted)" }}>จำนวนงานที่เสร็จ {rangeDays} วัน</p>
-            </div>
-          </div>
-          {days.every(d => d.done === 0) ? (
-            <div className="flex flex-col items-center justify-center h-44" style={{ color: "var(--wt-muted)" }}>
-              <span style={{ fontSize: "2rem" }}>📊</span>
-              <p style={{ fontSize: "0.85rem", fontWeight: 700, marginTop: 8 }}>ยังไม่มีข้อมูล</p>
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={days} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(124,58,237,0.12)" />
-                <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#9b8fb5", fontFamily: "Nunito" }} axisLine={false} tickLine={false} interval={tickInterval} />
-                <YAxis tick={{ fontSize: 11, fill: "#9b8fb5", fontFamily: "Nunito" }} axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip content={<CustomTooltip unitSuffix="งาน" />} />
-                <Bar dataKey="done" name="เสร็จ" radius={[8, 8, 0, 0]} fill="url(#doneGrad)" />
-                <defs>
-                  <linearGradient id="doneGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#34d399" />
-                    <stop offset="100%" stopColor="#6ee7b7" />
-                  </linearGradient>
-                </defs>
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </div>
 
       {/* Time per task (linked Kanban tasks) */}
       <div className="bg-white rounded-2xl p-5" style={{ border: "2px solid var(--wt-border)", boxShadow: "0 4px 16px rgba(124,58,237,0.08)" }}>
