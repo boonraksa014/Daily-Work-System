@@ -146,11 +146,11 @@ export function Reports({ logEntries, tasks, categories }: ReportsProps) {
               <TrendingUp size={14} style={{ color: "white" }} />
             </div>
             <div>
-              <p style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--wt-text)" }}>ชั่วโมงงาน {rangeDays} วันล่าสุด</p>
-              <p style={{ fontSize: "0.72rem", color: "var(--wt-muted)" }}>บันทึกการทำงานรายวัน</p>
+              <p style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--wt-text)" }}>งานที่เสร็จ {rangeDays} วันล่าสุด</p>
+              <p style={{ fontSize: "0.72rem", color: "var(--wt-muted)" }}>จำนวนงานที่เสร็จต่อวัน</p>
             </div>
           </div>
-          {days.every(d => d.hours === 0) ? (
+          {days.every(d => d.done === 0) ? (
             <div className="flex flex-col items-center justify-center h-44" style={{ color: "var(--wt-muted)" }}>
               <span style={{ fontSize: "2rem" }}>📊</span>
               <p style={{ fontSize: "0.85rem", fontWeight: 700, marginTop: 8 }}>ยังไม่มีข้อมูล</p>
@@ -166,9 +166,9 @@ export function Reports({ logEntries, tasks, categories }: ReportsProps) {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(124,58,237,0.12)" />
                 <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#9b8fb5", fontFamily: "Nunito" }} axisLine={false} tickLine={false} interval={tickInterval} />
-                <YAxis tick={{ fontSize: 11, fill: "#9b8fb5", fontFamily: "Nunito" }} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip unitSuffix="ชม." />} />
-                <Area type="monotone" dataKey="hours" name="ชั่วโมง" stroke="#7c3aed" strokeWidth={3} fill="url(#hoursGrad)"
+                <YAxis tick={{ fontSize: 11, fill: "#9b8fb5", fontFamily: "Nunito" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip content={<CustomTooltip unitSuffix="งาน" />} />
+                <Area type="monotone" dataKey="done" name="งานที่เสร็จ" stroke="#7c3aed" strokeWidth={3} fill="url(#hoursGrad)"
                   dot={{ fill: "#7c3aed", r: 5, strokeWidth: 0 }} activeDot={{ r: 7, fill: "#a855f7" }} />
               </AreaChart>
             </ResponsiveContainer>
@@ -270,7 +270,7 @@ export function Reports({ logEntries, tasks, categories }: ReportsProps) {
               <BarChart data={days} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(124,58,237,0.12)" />
                 <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#9b8fb5", fontFamily: "Nunito" }} axisLine={false} tickLine={false} interval={tickInterval} />
-                <YAxis tick={{ fontSize: 11, fill: "#9b8fb5", fontFamily: "Nunito" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: "#9b8fb5", fontFamily: "Nunito" }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip content={<CustomTooltip unitSuffix="งาน" />} />
                 <Bar dataKey="done" name="เสร็จ" radius={[8, 8, 0, 0]} fill="url(#doneGrad)" />
                 <defs>
