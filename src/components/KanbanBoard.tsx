@@ -524,11 +524,11 @@ interface KanbanBoardProps {
   onLogTime?: (info: { taskId: string; title: string; hours: number; projectId?: string; categoryId?: string }) => void;
   /** แก้ชั่วโมงของบันทึกรายวันที่ผูกกับงาน (ใช้ในหน้าแก้งาน) */
   onUpdateLogHours?: (logId: string, hours: number) => void;
-  /** ย้ายงานไป "เสร็จสิ้น" → ให้มาร์กบันทึกรายวันที่ผูกกับงานนี้เป็น "เสร็จ" ด้วย */
-  onCompleteTaskLogs?: (taskId: string) => void;
+  /** ย้ายงานเข้า/ออก "เสร็จสิ้น" → ตั้งสถานะ "เสร็จ" ของบันทึกรายวันที่ผูกกับงานนี้ตามไปด้วย */
+  onSetTaskLogsDone?: (taskId: string, done: boolean) => void;
 }
 
-export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags = [], availableProjects = [], availableCategories = [], logEntries = [], onLogTime, onUpdateLogHours, onCompleteTaskLogs }: KanbanBoardProps) {
+export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags = [], availableProjects = [], availableCategories = [], logEntries = [], onLogTime, onUpdateLogHours, onSetTaskLogsDone }: KanbanBoardProps) {
   const [addingTo, setAddingTo] = useState<Status | null>(null);
   const [editing, setEditing] = useState<Task | null>(null);
   const [query, setQuery] = useState("");
@@ -580,8 +580,9 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags 
       if (current.status === "done") return { ...t, status, completedAt: undefined };
       return { ...t, status };
     }));
-    // ย้ายเข้า "เสร็จสิ้น" → มาร์กบันทึกรายวันที่ผูกกับงานนี้ให้เป็น "เสร็จ" ไปพร้อมกัน
-    if (status === "done") onCompleteTaskLogs?.(id);
+    // ตั้งสถานะ "เสร็จ" ของบันทึกรายวันที่ผูกกับงานนี้ตามการย้าย: เข้า done = เสร็จ, ออกจาก done = ยังไม่เสร็จ
+    if (status === "done") onSetTaskLogsDone?.(id, true);
+    else if (current.status === "done") onSetTaskLogsDone?.(id, false);
   }
 
   function handleDrop(status: Status) {
