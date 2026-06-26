@@ -55,7 +55,8 @@ export function Reports({ logEntries, tasks, categories }: ReportsProps) {
     const dateStr = d.toISOString().split("T")[0];
     const dayName = d.toLocaleDateString("th-TH", rangeDays > 7 ? { day: "numeric", month: "short" } : { weekday: "short" });
     const hours = logEntries.filter(e => e.date === dateStr).reduce((s, e) => s + e.hours, 0);
-    const done = logEntries.filter(e => e.date === dateStr && e.done).length;
+    // นับงาน Kanban ที่ "เสร็จ" ตามวันที่เสร็จจริง (completedAt) — งานเก่าที่ไม่มีให้ใช้ createdAt แทน
+    const done = tasks.filter(t => t.status === "done" && (t.completedAt ?? t.createdAt) === dateStr).length;
     return { day: dayName, hours, done };
   });
 
