@@ -5,16 +5,17 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from "recharts";
-import { TrendingUp, Clock, CheckCircle2, Target, Award, Zap } from "lucide-react";
-import { toDateStr } from "../lib/date";
+import { TrendingUp, Clock, CheckCircle2, Target, Award, Zap, Layers, Download } from "lucide-react";
+import { toDateStr, todayStr } from "../lib/date";
 import type { LogEntry } from "./DailyLog";
 import type { Task } from "./KanbanBoard";
-import type { Category } from "@/types";
+import type { Category, Project } from "@/types";
 
 interface ReportsProps {
   logEntries: LogEntry[];
   tasks: Task[];
   categories: Category[];
+  projects: Project[];
 }
 
 const STAT_CARDS = [
@@ -45,8 +46,9 @@ function CustomTooltip({ active, payload, label, unitSuffix = "" }: CustomToolti
   );
 }
 
-export function Reports({ logEntries, tasks, categories }: ReportsProps) {
+export function Reports({ logEntries, tasks, categories, projects }: ReportsProps) {
   const [rangeDays, setRangeDays] = useState(7);
+  const [exporting, setExporting] = useState(false);
   const catColor = (name: string) => categories.find(c => c.name === name)?.color ?? "#a78bfa";
 
   // Per-day series over the selected range (oldest -> newest)
@@ -95,6 +97,64 @@ export function Reports({ logEntries, tasks, categories }: ReportsProps) {
     hours: totalHours, completion: completionRate, avg: avgHoursPerDay, topcat: topCategory,
   };
 
+  // สรุปตามโปรเจกต์: ชั่วโมง (จากบันทึก) + จำนวนงาน/เสร็จ (จาก Kanban) รวม "ไม่ระบุ" เป็นถังเดียว
+  const NONE = "__none__";
+  const projById = new Map(projects.map(p => [p.id, p]));
+  const projAgg = new Map<string, { name: string; color: string; hours: number; tasks: number; done: number }>();
+  const ensureProj = (id: string, name: string, color: string) => {
+    let row = projAgg.get(id);
+    if (!row) { row = { name, color, hours: 0, tasks: 0, done: 0 }; projAgg.set(id, row); }
+    return row;
+  };
+  for (const e of logEntries) {
+    const p = e.projectId ? projById.get(e.projectId) : undefined;
+    ensureProj(p?.id ?? NONE, p?.name ?? "ไม่ระบุโปรเจกต์", p?.color ?? "#94a3b8").hours += e.hours;
+  }
+  for (const t of tasks) {
+    const p = t.projectId ? projById.get(t.projectId) : undefined;
+    const row = ensureProj(p?.id ?? NONE, p?.name ?? "ไม่ระบุโปรเจกต์", p?.color ?? "#94a3b8");
+    row.tasks += 1;
+    if (t.status === "done") row.done += 1;
+  }
+  const projectStats = [...projAgg.values()]
+    .filter(r => r.hours > 0 || r.tasks > 0)
+    .sort((a, b) => b.hours - a.hours || b.tasks - a.tasks);
+  const projectHoursMax = Math.max(1, ...projectStats.map(r => r.hours));
+
+  // Export รายงานเป็น Excel (.xlsx) — โหลด xlsx เฉพาะตอนกด (code-split)
+  async function exportExcel() {
+    setExporting(true);
+    try {
+      const XLSX = await import("xlsx");
+      const projName = (id?: string) => (id ? projById.get(id)?.name ?? "" : "");
+      const catNameById = (id?: string) => (id ? categories.find(c => c.id === id)?.name ?? "" : "");
+      const statusLabel: Record<string, string> = { todo: "รอดำเนินการ", inprogress: "กำลังดำเนินการ", done: "เสร็จสิ้น" };
+      const priLabel: Record<string, string> = { low: "ต่ำ", medium: "กลาง", high: "สูง" };
+
+      const logRows = [...logEntries].sort((a, b) => b.date.localeCompare(a.date)).map(e => ({
+        "วันที่": e.date, "งาน": e.title, "หมวดหมู่": e.category, "โปรเจกต์": projName(e.projectId),
+        "ชั่วโมง": e.hours, "สถานะ": e.done ? "เสร็จ" : "ค้าง",
+        "งานที่ผูก": tasks.find(t => t.id === e.taskId)?.title ?? "", "บันทึก": e.note ?? "",
+      }));
+      const taskRows = tasks.map(t => ({
+        "งาน": t.title, "สถานะ": statusLabel[t.status] ?? t.status, "ความสำคัญ": priLabel[t.priority] ?? t.priority,
+        "โปรเจกต์": projName(t.projectId), "หมวดหมู่": catNameById(t.categoryId), "แท็ก": t.tags.join(", "),
+        "กำหนดส่ง": t.dueDate ?? "", "วันที่เสร็จ": t.completedAt ?? "", "สร้างเมื่อ": t.createdAt,
+      }));
+      const projRows = projectStats.map(r => ({
+        "โปรเจกต์": r.name, "ชั่วโมงรวม": r.hours, "งานทั้งหมด": r.tasks, "เสร็จแล้ว": r.done,
+      }));
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(logRows), "บันทึกรายวัน");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(taskRows), "งาน Kanban");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(projRows), "สรุปโปรเจกต์");
+      XLSX.writeFile(wb, `taskflow-report-${todayStr()}.xlsx`);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   const tickInterval = rangeDays > 7 ? Math.floor(rangeDays / 6) : 0;
 
   return (
@@ -114,9 +174,16 @@ export function Reports({ logEntries, tasks, categories }: ReportsProps) {
             );
           })}
         </div>
-        <div className="flex items-center gap-2 rounded-xl" style={{ padding: "0.45rem 0.8rem", background: "var(--wt-tint-orange)", border: "1px solid var(--wt-c-prog-line)" }}>
-          <span style={{ fontSize: "1rem" }}>🔥</span>
-          <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--wt-c-prog-ink)" }}>{streak} วันติด</span>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 rounded-xl" style={{ padding: "0.45rem 0.8rem", background: "var(--wt-tint-orange)", border: "1px solid var(--wt-c-prog-line)" }}>
+            <span style={{ fontSize: "1rem" }}>🔥</span>
+            <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--wt-c-prog-ink)" }}>{streak} วันติด</span>
+          </div>
+          <button onClick={exportExcel} disabled={exporting}
+            className="flex items-center gap-1.5 rounded-xl transition-opacity"
+            style={{ padding: "0.5rem 0.9rem", background: "linear-gradient(135deg, #059669, #34d399)", color: "#fff", fontSize: "0.82rem", fontWeight: 800, border: "none", boxShadow: "0 4px 14px rgba(5,150,105,0.3)", opacity: exporting ? 0.6 : 1, cursor: exporting ? "wait" : "pointer" }}>
+            <Download size={15} /> {exporting ? "กำลังสร้าง…" : "Export Excel"}
+          </button>
         </div>
       </div>
 
@@ -247,6 +314,46 @@ export function Reports({ logEntries, tasks, categories }: ReportsProps) {
             </div>
           )}
         </div>
+
+      {/* Per-project breakdown */}
+      <div className="bg-white rounded-2xl p-5" style={{ border: "2px solid var(--wt-border)", boxShadow: "0 4px 16px rgba(124,58,237,0.08)" }}>
+        <div className="flex items-center gap-2 mb-4">
+          <div className="p-2 rounded-xl" style={{ background: "linear-gradient(135deg, #7c3aed, #a855f7)" }}>
+            <Layers size={14} style={{ color: "white" }} />
+          </div>
+          <div>
+            <p style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--wt-text)" }}>สรุปตามโปรเจกต์</p>
+            <p style={{ fontSize: "0.72rem", color: "var(--wt-muted)" }}>ชั่วโมงและจำนวนงานต่อโปรเจกต์</p>
+          </div>
+        </div>
+        {projectStats.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8" style={{ color: "var(--wt-muted)" }}>
+            <span style={{ fontSize: "2rem" }}>📁</span>
+            <p style={{ fontSize: "0.85rem", fontWeight: 700, marginTop: 8 }}>ยังไม่มีข้อมูลตามโปรเจกต์</p>
+            <p style={{ fontSize: "0.78rem", marginTop: 2 }}>เลือกโปรเจกต์ตอนเพิ่มงาน/บันทึกรายวันเพื่อให้ขึ้นที่นี่</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {projectStats.map((r, i) => (
+              <div key={r.name + i}>
+                <div className="flex items-center justify-between mb-1.5 gap-2">
+                  <span className="flex items-center gap-2 truncate" style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--wt-text)", maxWidth: "60%" }} title={r.name}>
+                    <span className="inline-block rounded-full shrink-0" style={{ width: 10, height: 10, background: r.color }} />
+                    {r.name}
+                  </span>
+                  <span className="flex items-center gap-2 shrink-0">
+                    <span style={{ fontSize: "0.8rem", fontWeight: 800, color: "#7c3aed" }}>{r.hours} ชม.</span>
+                    <span className="px-2 py-0.5 rounded-full" style={{ background: "var(--wt-soft2)", fontSize: "0.72rem", fontWeight: 800, color: "var(--wt-text)" }}>{r.done}/{r.tasks} งาน</span>
+                  </span>
+                </div>
+                <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "var(--wt-soft2)" }}>
+                  <div className="h-full rounded-full transition-all duration-700" style={{ width: `${(r.hours / projectHoursMax) * 100}%`, background: r.color }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Time per task (linked Kanban tasks) */}
       <div className="bg-white rounded-2xl p-5" style={{ border: "2px solid var(--wt-border)", boxShadow: "0 4px 16px rgba(124,58,237,0.08)" }}>
