@@ -3,6 +3,7 @@
 import { KanbanBoard } from "@/components/KanbanBoard";
 import { useData } from "@/lib/store";
 import { makeId } from "@/lib/id";
+import { todayStr } from "@/lib/date";
 
 export default function KanbanPage() {
   const { tasks, setTasks, removeTask, tags, logEntries, setLogEntries, categories, projects } = useData();
@@ -10,7 +11,7 @@ export default function KanbanPage() {
 
   // ติ๊ก "ลงเวลาด้วย" ตอนเพิ่มงาน → สร้างบันทึกรายวันของวันนี้ที่ผูกกับงานนั้น (สืบทอดหมวดหมู่/โปรเจกต์ของงาน)
   function handleLogTime({ taskId, title, hours, projectId, categoryId }: { taskId: string; title: string; hours: number; projectId?: string; categoryId?: string }) {
-    const today = new Date().toISOString().split("T")[0];
+    const today = todayStr();
     // ใช้หมวดของงานถ้ามี ไม่งั้น fallback หมวดที่เปิดใช้งานตัวแรก
     const category = (categoryId ? categories.find(c => c.id === categoryId)?.name : undefined)
       ?? categories.find(c => c.isActive)?.name ?? categories[0]?.name ?? "";

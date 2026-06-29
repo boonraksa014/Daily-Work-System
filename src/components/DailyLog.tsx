@@ -7,6 +7,7 @@ import type { Category, Project } from "../types";
 import type { Task } from "./KanbanBoard";
 import { DatePicker } from "./DatePicker";
 import { SingleSelect } from "./SingleSelect";
+import { todayStr, offsetDate } from "../lib/date";
 
 export interface LogEntry {
   id: string;
@@ -23,14 +24,6 @@ export interface LogEntry {
 /** หา category ตามชื่อ; ถ้าถูกลบไปแล้วคืนค่า fallback กลางๆ */
 function findCat(categories: Category[], name: string): Category {
   return categories.find(c => c.name === name) ?? { id: "", name, emoji: "📌", color: "#94a3b8", isActive: true };
-}
-
-function todayStr() { return new Date().toISOString().split("T")[0]; }
-
-function offsetDate(date: string, days: number) {
-  const d = new Date(date);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().split("T")[0];
 }
 
 function formatDateThai(dateStr: string) {

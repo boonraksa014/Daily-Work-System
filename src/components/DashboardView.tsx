@@ -4,6 +4,7 @@ import { BookOpen, Zap, Target } from "lucide-react";
 import type { Task } from "@/components/KanbanBoard";
 import type { LogEntry } from "@/components/DailyLog";
 import type { View } from "@/types";
+import { todayStr } from "@/lib/date";
 
 function greeting() {
   const h = new Date().getHours();
@@ -19,7 +20,7 @@ interface DashboardViewProps {
 }
 
 export function DashboardView({ tasks, logEntries, onNavigate }: DashboardViewProps) {
-  const today = new Date().toISOString().split("T")[0];
+  const today = todayStr();
   const todayLogs = logEntries.filter(e => e.date === today);
   const todayHours = todayLogs.reduce((s, e) => s + e.hours, 0);
   const todayDone = todayLogs.filter(e => e.done).length;

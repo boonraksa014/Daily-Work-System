@@ -194,7 +194,12 @@ function readBuffer(userId: string): LocalBuffer | null {
     const raw = localStorage.getItem(BUFFER_PREFIX + userId);
     if (!raw) return null;
     const b = JSON.parse(raw) as LocalBuffer;
-    return b && b.userId === userId ? b : null;
+    // ตรวจรูปร่างให้ครบก่อนเชื่อ — buffer ที่เก่า/เพี้ยน/ขาดฟิลด์ ให้ทิ้งไป
+    // (กัน setState(undefined) → crash และกัน diff-sync ลบข้อมูลบน server เพราะ collection ว่างผิด)
+    if (!b || b.userId !== userId) return null;
+    const ok = Array.isArray(b.tasks) && Array.isArray(b.logEntries) && Array.isArray(b.categories)
+      && Array.isArray(b.tags) && Array.isArray(b.projects) && b.settings != null && typeof b.settings === "object";
+    return ok ? b : null;
   } catch {
     return null;
   }

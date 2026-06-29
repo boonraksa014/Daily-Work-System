@@ -5,6 +5,7 @@ import { Plus, MoreHorizontal, Clock, Trash2, X, Sparkles, Pencil, Search, Chevr
 import { makeId } from "../lib/id";
 import { DatePicker } from "./DatePicker";
 import { SingleSelect } from "./SingleSelect";
+import { todayStr, toDateStr } from "../lib/date";
 import type { LogEntry } from "./DailyLog";
 import type { Project, Category } from "../types";
 
@@ -57,7 +58,6 @@ function tagPalette(tag: string) {
   return TAG_PALETTES[sum % TAG_PALETTES.length];
 }
 
-function todayStr() { return new Date().toISOString().split("T")[0]; }
 function isOverdue(task: Task) { return !!task.dueDate && task.dueDate < todayStr() && task.status !== "done"; }
 
 function toggle<T>(arr: T[], v: T): T[] {
@@ -609,7 +609,7 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags 
   const doneCutoff = (() => {
     const d = new Date();
     d.setDate(d.getDate() - (DONE_VISIBLE_DAYS - 1));
-    return d.toISOString().split("T")[0];
+    return toDateStr(d);
   })();
   const inColumn = (t: Task, colId: Status) =>
     t.status === colId && (colId !== "done" || (t.completedAt ?? t.createdAt) >= doneCutoff);

@@ -4,11 +4,12 @@ import type { Task } from "@/components/KanbanBoard";
 import type { LogEntry } from "@/components/DailyLog";
 import type { Tag } from "@/types";
 import { makeId } from "@/lib/id";
+import { toDateStr } from "@/lib/date";
 
 function dStr(daysAgo: number) {
   const d = new Date();
   d.setDate(d.getDate() - daysAgo);
-  return d.toISOString().split("T")[0];
+  return toDateStr(d);
 }
 
 export function makeSampleData(): { tasks: Task[]; logEntries: LogEntry[]; tags: Tag[] } {

@@ -6,6 +6,7 @@ import {
   PieChart, Pie, Cell, Legend
 } from "recharts";
 import { TrendingUp, Clock, CheckCircle2, Target, Award, Zap } from "lucide-react";
+import { toDateStr } from "../lib/date";
 import type { LogEntry } from "./DailyLog";
 import type { Task } from "./KanbanBoard";
 import type { Category } from "@/types";
@@ -52,7 +53,7 @@ export function Reports({ logEntries, tasks, categories }: ReportsProps) {
   const days = Array.from({ length: rangeDays }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (rangeDays - 1 - i));
-    const dateStr = d.toISOString().split("T")[0];
+    const dateStr = toDateStr(d);
     const dayName = d.toLocaleDateString("th-TH", rangeDays > 7 ? { day: "numeric", month: "short" } : { weekday: "short" });
     const hours = logEntries.filter(e => e.date === dateStr).reduce((s, e) => s + e.hours, 0);
     // นับงาน Kanban ที่ "เสร็จ" ตามวันที่เสร็จจริง (completedAt) — งานเก่าที่ไม่มีให้ใช้ createdAt แทน
@@ -70,8 +71,8 @@ export function Reports({ logEntries, tasks, categories }: ReportsProps) {
   let streak = 0;
   {
     const d = new Date();
-    if (!entryDates.has(d.toISOString().split("T")[0])) d.setDate(d.getDate() - 1);
-    while (entryDates.has(d.toISOString().split("T")[0])) { streak++; d.setDate(d.getDate() - 1); }
+    if (!entryDates.has(toDateStr(d))) d.setDate(d.getDate() - 1);
+    while (entryDates.has(toDateStr(d))) { streak++; d.setDate(d.getDate() - 1); }
   }
 
   // Stats

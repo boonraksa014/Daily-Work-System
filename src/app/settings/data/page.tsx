@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { Download, Upload, RotateCcw, Sparkles } from "lucide-react";
 import { useData, type BackupData } from "@/lib/store";
 import { useConfirm } from "@/components/ConfirmDialog";
+import { todayStr } from "@/lib/date";
 
 export default function DataSettingsPage() {
   const { tasks, logEntries, categories, tags, projects, exportData, importData, resetData, addSampleData } = useData();
@@ -17,7 +18,7 @@ export default function DataSettingsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `taskflow-backup-${new Date().toISOString().split("T")[0]}.json`;
+    a.download = `taskflow-backup-${todayStr()}.json`;
     a.click();
     URL.revokeObjectURL(url);
     setMsg({ kind: "ok", text: "ส่งออกข้อมูลเรียบร้อย" });
