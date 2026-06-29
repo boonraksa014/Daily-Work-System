@@ -6,7 +6,8 @@ import {
   PieChart, Pie, Cell, Legend
 } from "recharts";
 import { TrendingUp, Clock, CheckCircle2, Target, Award, Zap, Layers, Download } from "lucide-react";
-import { toDateStr, todayStr } from "../lib/date";
+import { toDateStr, todayStr, offsetDate } from "../lib/date";
+import { DatePicker } from "./DatePicker";
 import type { LogEntry } from "./DailyLog";
 import type { Task } from "./KanbanBoard";
 import type { Category, Project } from "@/types";
@@ -47,17 +48,23 @@ function CustomTooltip({ active, payload, label, unitSuffix = "" }: CustomToolti
 }
 
 export function Reports({ logEntries, tasks, categories, projects }: ReportsProps) {
-  const [rangeDays, setRangeDays] = useState(7);
+  // ช่วงวันที่ — ค่าเริ่มต้น = 1 เดือนล่าสุด
+  const [startDate, setStartDate] = useState(() => { const d = new Date(); d.setMonth(d.getMonth() - 1); return toDateStr(d); });
+  const [endDate, setEndDate] = useState(() => todayStr());
   const [exporting, setExporting] = useState(false);
   const catColor = (name: string) => categories.find(c => c.name === name)?.color ?? "#a78bfa";
 
+  // จัดให้ start <= end เสมอ แล้วกรองบันทึกรายวันให้อยู่ในช่วง (ใช้ขับทุกสถิติ/กราฟ/ตารางที่อิงวันที่)
+  const [rangeStart, rangeEnd] = startDate <= endDate ? [startDate, endDate] : [endDate, startDate];
+  const dayCount = Math.max(1, Math.round((new Date(rangeEnd + "T00:00:00").getTime() - new Date(rangeStart + "T00:00:00").getTime()) / 86400000) + 1);
+  const rangeLogs = logEntries.filter(e => e.date >= rangeStart && e.date <= rangeEnd);
+  const manyDays = dayCount > 7;
+
   // Per-day series over the selected range (oldest -> newest)
-  const days = Array.from({ length: rangeDays }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (rangeDays - 1 - i));
-    const dateStr = toDateStr(d);
-    const dayName = d.toLocaleDateString("th-TH", rangeDays > 7 ? { day: "numeric", month: "short" } : { weekday: "short" });
-    const hours = logEntries.filter(e => e.date === dateStr).reduce((s, e) => s + e.hours, 0);
+  const days = Array.from({ length: dayCount }, (_, i) => {
+    const dateStr = offsetDate(rangeStart, i);
+    const dayName = new Date(dateStr + "T00:00:00").toLocaleDateString("th-TH", manyDays ? { day: "numeric", month: "short" } : { weekday: "short" });
+    const hours = rangeLogs.filter(e => e.date === dateStr).reduce((s, e) => s + e.hours, 0);
     // นับงาน Kanban ที่ "เสร็จ" ตามวันที่เสร็จจริง (completedAt) — งานเก่าที่ไม่มีให้ใช้ createdAt แทน
     const done = tasks.filter(t => t.status === "done" && (t.completedAt ?? t.createdAt) === dateStr).length;
     return { day: dayName, hours, done };
@@ -65,7 +72,7 @@ export function Reports({ logEntries, tasks, categories, projects }: ReportsProp
 
   // Category breakdown
   const catMap: Record<string, number> = {};
-  logEntries.forEach(e => { catMap[e.category] = (catMap[e.category] || 0) + e.hours; });
+  rangeLogs.forEach(e => { catMap[e.category] = (catMap[e.category] || 0) + e.hours; });
   const categoryData = Object.entries(catMap).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
 
   // Streak: consecutive days with >=1 entry, ending today (or yesterday as grace)
@@ -77,16 +84,16 @@ export function Reports({ logEntries, tasks, categories, projects }: ReportsProp
     while (entryDates.has(toDateStr(d))) { streak++; d.setDate(d.getDate() - 1); }
   }
 
-  // Stats
-  const totalHours = logEntries.reduce((s, e) => s + e.hours, 0);
-  const doneEntries = logEntries.filter(e => e.done).length;
-  const completionRate = logEntries.length > 0 ? Math.round((doneEntries / logEntries.length) * 100) : 0;
-  const avgHoursPerDay = (days.reduce((s, d) => s + d.hours, 0) / rangeDays).toFixed(1);
+  // Stats (อิงช่วงที่เลือก)
+  const totalHours = rangeLogs.reduce((s, e) => s + e.hours, 0);
+  const doneEntries = rangeLogs.filter(e => e.done).length;
+  const completionRate = rangeLogs.length > 0 ? Math.round((doneEntries / rangeLogs.length) * 100) : 0;
+  const avgHoursPerDay = (days.reduce((s, d) => s + d.hours, 0) / dayCount).toFixed(1);
   const topCategory = categoryData[0]?.name ?? "-";
 
-  // เวลาที่ใช้ต่องาน Kanban (จากบันทึกที่ผูก task) — Top 6
+  // เวลาที่ใช้ต่องาน Kanban (จากบันทึกที่ผูก task ในช่วง) — Top 6
   const taskHourMap: Record<string, number> = {};
-  logEntries.forEach(e => { if (e.taskId) taskHourMap[e.taskId] = (taskHourMap[e.taskId] || 0) + e.hours; });
+  rangeLogs.forEach(e => { if (e.taskId) taskHourMap[e.taskId] = (taskHourMap[e.taskId] || 0) + e.hours; });
   const taskTimeData = Object.entries(taskHourMap)
     .map(([id, value]) => ({ id, title: tasks.find(t => t.id === id)?.title ?? "(งานที่ถูกลบ)", value }))
     .sort((a, b) => b.value - a.value)
@@ -106,7 +113,7 @@ export function Reports({ logEntries, tasks, categories, projects }: ReportsProp
     if (!row) { row = { name, color, hours: 0, tasks: 0, done: 0 }; projAgg.set(id, row); }
     return row;
   };
-  for (const e of logEntries) {
+  for (const e of rangeLogs) {
     const p = e.projectId ? projById.get(e.projectId) : undefined;
     ensureProj(p?.id ?? NONE, p?.name ?? "ไม่ระบุโปรเจกต์", p?.color ?? "#94a3b8").hours += e.hours;
   }
@@ -131,7 +138,7 @@ export function Reports({ logEntries, tasks, categories, projects }: ReportsProp
       const statusLabel: Record<string, string> = { todo: "รอดำเนินการ", inprogress: "กำลังดำเนินการ", done: "เสร็จสิ้น" };
       const priLabel: Record<string, string> = { low: "ต่ำ", medium: "กลาง", high: "สูง" };
 
-      const logRows = [...logEntries].sort((a, b) => b.date.localeCompare(a.date)).map(e => ({
+      const logRows = [...rangeLogs].sort((a, b) => b.date.localeCompare(a.date)).map(e => ({
         "วันที่": e.date, "งาน": e.title, "หมวดหมู่": e.category, "โปรเจกต์": projName(e.projectId),
         "ชั่วโมง": e.hours, "สถานะ": e.done ? "เสร็จ" : "ค้าง",
         "งานที่ผูก": tasks.find(t => t.id === e.taskId)?.title ?? "", "บันทึก": e.note ?? "",
@@ -155,24 +162,24 @@ export function Reports({ logEntries, tasks, categories, projects }: ReportsProp
     }
   }
 
-  const tickInterval = rangeDays > 7 ? Math.floor(rangeDays / 6) : 0;
+  const tickInterval = manyDays ? Math.floor(dayCount / 6) : 0;
 
   return (
     <div className="space-y-5">
-      {/* Range toggle + streak */}
+      {/* Date range filter + streak + export */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="inline-flex rounded-xl overflow-hidden" style={{ border: "1px solid var(--wt-border)" }}>
-          {[7, 30].map(n => {
-            const active = rangeDays === n;
-            return (
-              <button key={n} onClick={() => setRangeDays(n)} aria-pressed={active}
-                style={{ padding: "0.45rem 0.9rem", fontSize: "0.8rem", fontWeight: 800,
-                  background: active ? "linear-gradient(135deg, #7c3aed, #a855f7)" : "var(--wt-card)",
-                  color: active ? "#fff" : "var(--wt-muted)" }}>
-                {n} วัน
+        <div className="flex items-center gap-2 flex-wrap">
+          <DatePicker value={startDate} max={endDate} onChange={setStartDate} ariaLabel="วันที่เริ่ม" />
+          <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--wt-muted)" }}>ถึง</span>
+          <DatePicker value={endDate} min={startDate} max={todayStr()} onChange={setEndDate} ariaLabel="วันที่สิ้นสุด" />
+          <div className="inline-flex rounded-xl overflow-hidden" style={{ border: "1px solid var(--wt-border)" }}>
+            {([["7 วัน", 7], ["30 วัน", 30], ["3 เดือน", 90]] as [string, number][]).map(([label, n]) => (
+              <button key={n} onClick={() => { setEndDate(todayStr()); setStartDate(offsetDate(todayStr(), -(n - 1))); }}
+                style={{ padding: "0.45rem 0.7rem", fontSize: "0.76rem", fontWeight: 800, background: "var(--wt-card)", color: "var(--wt-muted)" }}>
+                {label}
               </button>
-            );
-          })}
+            ))}
+          </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-2 rounded-xl" style={{ padding: "0.45rem 0.8rem", background: "var(--wt-tint-orange)", border: "1px solid var(--wt-c-prog-line)" }}>
@@ -214,8 +221,8 @@ export function Reports({ logEntries, tasks, categories, projects }: ReportsProp
               <TrendingUp size={14} style={{ color: "white" }} />
             </div>
             <div>
-              <p style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--wt-text)" }}>งานที่เสร็จ {rangeDays} วันล่าสุด</p>
-              <p style={{ fontSize: "0.72rem", color: "var(--wt-muted)" }}>จำนวนงานที่เสร็จต่อวัน</p>
+              <p style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--wt-text)" }}>งานที่เสร็จรายวัน</p>
+              <p style={{ fontSize: "0.72rem", color: "var(--wt-muted)" }}>{rangeStart} – {rangeEnd}</p>
             </div>
           </div>
           {days.every(d => d.done === 0) ? (
@@ -397,10 +404,10 @@ export function Reports({ logEntries, tasks, categories, projects }: ReportsProp
           </div>
           <div>
             <p style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--wt-text)" }}>รายการงานล่าสุด</p>
-            <p style={{ fontSize: "0.72rem", color: "var(--wt-muted)" }}>10 รายการล่าสุด</p>
+            <p style={{ fontSize: "0.72rem", color: "var(--wt-muted)" }}>10 รายการล่าสุดในช่วงที่เลือก</p>
           </div>
         </div>
-        {logEntries.length === 0 ? (
+        {rangeLogs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8" style={{ color: "var(--wt-muted)" }}>
             <span style={{ fontSize: "2rem" }}>📝</span>
             <p style={{ fontSize: "0.85rem", fontWeight: 700, marginTop: 8 }}>ยังไม่มีรายการ</p>
@@ -418,7 +425,7 @@ export function Reports({ logEntries, tasks, categories, projects }: ReportsProp
                 </tr>
               </thead>
               <tbody>
-                {[...logEntries].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10).map((e, i) => (
+                {[...rangeLogs].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10).map((e, i) => (
                   <tr key={e.id} style={{ background: i % 2 === 0 ? "transparent" : "var(--wt-stripe)" }}>
                     <td className="py-3 pr-3" style={{ fontSize: "0.78rem", color: "var(--wt-muted)", whiteSpace: "nowrap", borderBottom: "1px solid var(--wt-soft2)" }}>{e.date}</td>
                     <td className="py-3 pr-3" style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--wt-text)", borderBottom: "1px solid var(--wt-soft2)" }}>{e.title}</td>
