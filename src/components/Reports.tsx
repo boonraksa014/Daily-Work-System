@@ -128,35 +128,110 @@ export function Reports({ logEntries, tasks, categories, projects }: ReportsProp
     .sort((a, b) => b.hours - a.hours || b.tasks - a.tasks);
   const projectHoursMax = Math.max(1, ...projectStats.map(r => r.hours));
 
-  // Export รายงานเป็น Excel (.xlsx) — โหลด xlsx เฉพาะตอนกด (code-split)
+  // Export รายงานเป็น Excel (.xlsx) แบบมีสไตล์ — โหลด exceljs เฉพาะตอนกด (code-split)
   async function exportExcel() {
     setExporting(true);
     try {
-      const XLSX = await import("xlsx");
+      const ExcelJS = (await import("exceljs")).default;
       const projName = (id?: string) => (id ? projById.get(id)?.name ?? "" : "");
       const catNameById = (id?: string) => (id ? categories.find(c => c.id === id)?.name ?? "" : "");
       const statusLabel: Record<string, string> = { todo: "รอดำเนินการ", inprogress: "กำลังดำเนินการ", done: "เสร็จสิ้น" };
       const priLabel: Record<string, string> = { low: "ต่ำ", medium: "กลาง", high: "สูง" };
 
-      const logRows = [...rangeLogs].sort((a, b) => b.date.localeCompare(a.date)).map(e => ({
-        "วันที่": e.date, "งาน": e.title, "หมวดหมู่": e.category, "โปรเจกต์": projName(e.projectId),
-        "ชั่วโมง": e.hours, "สถานะ": e.done ? "เสร็จ" : "ค้าง",
-        "งานที่ผูก": tasks.find(t => t.id === e.taskId)?.title ?? "", "บันทึก": e.note ?? "",
-      }));
-      const taskRows = tasks.map(t => ({
-        "งาน": t.title, "สถานะ": statusLabel[t.status] ?? t.status, "ความสำคัญ": priLabel[t.priority] ?? t.priority,
-        "โปรเจกต์": projName(t.projectId), "หมวดหมู่": catNameById(t.categoryId), "แท็ก": t.tags.join(", "),
-        "กำหนดส่ง": t.dueDate ?? "", "วันที่เสร็จ": t.completedAt ?? "", "สร้างเมื่อ": t.createdAt,
-      }));
-      const projRows = projectStats.map(r => ({
-        "โปรเจกต์": r.name, "ชั่วโมงรวม": r.hours, "งานทั้งหมด": r.tasks, "เสร็จแล้ว": r.done,
-      }));
+      // ── สี/เส้นขอบ ──
+      const HEADER_BG = "FF2D1F6E", BAND_BG = "FFF5F3FF", BORDER = "FFE7E1F5";
+      const thin = { style: "thin" as const, color: { argb: BORDER } };
+      const border = { top: thin, left: thin, bottom: thin, right: thin };
+      const fill = (argb: string) => ({ type: "pattern" as const, pattern: "solid" as const, fgColor: { argb } });
+      // คืนสไตล์ของช่อง "สถานะ" ตามค่า
+      const statusStyle = (v: string): { bg: string; fg: string } | null => {
+        if (/เสร็จ/.test(v)) return { bg: "FFD1FAE5", fg: "FF065F46" };
+        if (/กำลัง/.test(v)) return { bg: "FFFFEDD5", fg: "FF9A3412" };
+        if (/(ค้าง|รอ)/.test(v)) return { bg: "FFFEF3C7", fg: "FF92400E" };
+        return null;
+      };
 
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(logRows), "บันทึกรายวัน");
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(taskRows), "งาน Kanban");
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(projRows), "สรุปโปรเจกต์");
-      XLSX.writeFile(wb, `taskflow-report-${todayStr()}.xlsx`);
+      interface Col { header: string; key: string; width: number; statusCol?: boolean }
+      const addSheet = (name: string, cols: Col[], rows: Record<string, string | number>[]) => {
+        const ws = wb.addWorksheet(name, { views: [{ state: "frozen", ySplit: 1 }] });
+        ws.columns = cols.map(c => ({ header: c.header, key: c.key, width: c.width }));
+        // หัวตาราง
+        const head = ws.getRow(1);
+        head.height = 24;
+        head.eachCell(cell => {
+          cell.fill = fill(HEADER_BG);
+          cell.font = { bold: true, size: 11, color: { argb: "FFFFFFFF" } };
+          cell.alignment = { vertical: "middle", horizontal: "left", wrapText: true };
+          cell.border = border;
+        });
+        // เนื้อข้อมูล
+        rows.forEach((r, i) => {
+          const row = ws.addRow(r);
+          row.eachCell(cell => {
+            cell.border = border;
+            cell.font = { size: 11 };
+            cell.alignment = { vertical: "top", wrapText: true };
+            if (i % 2 === 1) cell.fill = fill(BAND_BG); // แถบสลับสี
+          });
+          const sc = cols.find(c => c.statusCol);
+          if (sc) {
+            const cell = row.getCell(sc.key);
+            const st = statusStyle(String(cell.value ?? ""));
+            if (st) { cell.fill = fill(st.bg); cell.font = { size: 11, bold: true, color: { argb: st.fg } }; cell.alignment = { vertical: "middle", horizontal: "center" }; }
+          }
+        });
+        ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: cols.length } };
+      };
+
+      const wb = new ExcelJS.Workbook();
+      wb.creator = "TaskFlow";
+
+      addSheet("บันทึกรายวัน", [
+        { header: "วันที่", key: "date", width: 12 },
+        { header: "งาน", key: "title", width: 44 },
+        { header: "หมวดหมู่", key: "category", width: 16 },
+        { header: "โปรเจกต์", key: "project", width: 14 },
+        { header: "ชั่วโมง", key: "hours", width: 9 },
+        { header: "สถานะ", key: "status", width: 10, statusCol: true },
+        { header: "งานที่ผูก", key: "linked", width: 30 },
+        { header: "บันทึก", key: "note", width: 38 },
+      ], [...rangeLogs].sort((a, b) => b.date.localeCompare(a.date)).map(e => ({
+        date: e.date, title: e.title, category: e.category, project: projName(e.projectId),
+        hours: e.hours, status: e.done ? "เสร็จ" : "ค้าง",
+        linked: tasks.find(t => t.id === e.taskId)?.title ?? "", note: e.note ?? "",
+      })));
+
+      addSheet("งาน Kanban", [
+        { header: "งาน", key: "title", width: 44 },
+        { header: "สถานะ", key: "status", width: 16, statusCol: true },
+        { header: "ความสำคัญ", key: "priority", width: 12 },
+        { header: "โปรเจกต์", key: "project", width: 14 },
+        { header: "หมวดหมู่", key: "category", width: 16 },
+        { header: "แท็ก", key: "tags", width: 22 },
+        { header: "กำหนดส่ง", key: "due", width: 12 },
+        { header: "วันที่เสร็จ", key: "completed", width: 12 },
+        { header: "สร้างเมื่อ", key: "created", width: 12 },
+      ], tasks.map(t => ({
+        title: t.title, status: statusLabel[t.status] ?? t.status, priority: priLabel[t.priority] ?? t.priority,
+        project: projName(t.projectId), category: catNameById(t.categoryId), tags: t.tags.join(", "),
+        due: t.dueDate ?? "", completed: t.completedAt ?? "", created: t.createdAt,
+      })));
+
+      addSheet("สรุปโปรเจกต์", [
+        { header: "โปรเจกต์", key: "name", width: 26 },
+        { header: "ชั่วโมงรวม", key: "hours", width: 12 },
+        { header: "งานทั้งหมด", key: "tasks", width: 12 },
+        { header: "เสร็จแล้ว", key: "done", width: 12 },
+      ], projectStats.map(r => ({ name: r.name, hours: r.hours, tasks: r.tasks, done: r.done })));
+
+      const buf = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `taskflow-report-${todayStr()}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
     } finally {
       setExporting(false);
     }
