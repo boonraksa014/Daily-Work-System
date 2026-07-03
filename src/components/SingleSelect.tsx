@@ -37,17 +37,20 @@ export function SingleSelect({ value, onChange, options, ariaLabel, disabled = f
   const [open, setOpen] = useState(false);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
-    const close = () => setOpen(false);
+    // ปิดเมื่อเลื่อนหน้า/คอนเทนเนอร์ (กันเมนูหลุดจากปุ่ม) — แต่ไม่ปิดถ้าเลื่อน "ในเมนู" เอง
+    const onScroll = (e: Event) => { if (menuRef.current?.contains(e.target as Node)) return; setOpen(false); };
+    const onResize = () => setOpen(false);
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
-    window.addEventListener("scroll", close, true);
-    window.addEventListener("resize", close);
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onResize);
     window.addEventListener("keydown", onKey);
     return () => {
-      window.removeEventListener("scroll", close, true);
-      window.removeEventListener("resize", close);
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onResize);
       window.removeEventListener("keydown", onKey);
     };
   }, [open]);
@@ -84,7 +87,7 @@ export function SingleSelect({ value, onChange, options, ariaLabel, disabled = f
         <>
           {/* backdrop จับคลิกนอกเมนู */}
           <div className="fixed inset-0" style={{ zIndex: 90 }} onClick={() => setOpen(false)} />
-          <div role="listbox" className="rounded-xl overflow-hidden"
+          <div role="listbox" ref={menuRef} className="rounded-xl overflow-hidden"
             style={{
               position: "fixed",
               left: rect.left,
