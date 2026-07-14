@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { Search, X, ChevronLeft, ChevronRight, Layers } from "lucide-react";
 import { useData } from "@/lib/store";
+import { Tooltip } from "@/components/Tooltip";
 import type { Status } from "@/components/KanbanBoard";
 
 const NONE = "__none__";
@@ -190,12 +191,16 @@ export default function ProjectTasksPage() {
                         </td>
                         <td className="py-3 pr-3" style={{ fontSize: "0.83rem", fontWeight: 700, color: "var(--wt-text)", borderBottom: "1px solid var(--wt-soft2)", minWidth: 160 }}>
                           <span className="inline-flex items-center gap-1.5">
-                            <span title={r.kind === "task" ? "งาน Kanban" : "บันทึกรายวัน"} style={{ fontSize: "0.8rem" }}>{r.kind === "task" ? "📋" : "✍️"}</span>
+                            <Tooltip label={r.kind === "task" ? "งาน Kanban" : "บันทึกรายวัน"}>
+                              <span style={{ fontSize: "0.8rem", cursor: "default" }}>{r.kind === "task" ? "📋" : "✍️"}</span>
+                            </Tooltip>
                             {r.title}
                           </span>
                         </td>
                         <td className="py-3 pr-3" style={{ fontSize: "0.8rem", color: "var(--wt-muted)", borderBottom: "1px solid var(--wt-soft2)", maxWidth: 320 }}>
-                          <span className="line-clamp-2" title={r.description || undefined}>{r.description || "-"}</span>
+                          {r.description
+                            ? <Tooltip label={r.description} wrapperStyle={{ display: "block" }}><span className="line-clamp-2" style={{ cursor: "default" }}>{r.description}</span></Tooltip>
+                            : <span>-</span>}
                         </td>
                         <td className="py-3 pr-3" style={{ borderBottom: "1px solid var(--wt-soft2)", whiteSpace: "nowrap" }}>
                           <span className="inline-block px-2.5 py-1 rounded-full" style={{ background: r.status.bg, color: r.status.color, fontSize: "0.72rem", fontWeight: 800 }}>
