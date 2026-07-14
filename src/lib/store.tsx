@@ -65,7 +65,7 @@ interface DataContextValue {
 const DataContext = createContext<DataContextValue | null>(null);
 
 // ── รูปแบบที่ backend ส่งกลับ ───────────────────────────────────
-interface ApiTask { id: string; title: string; description: string | null; priority: Priority; status: Status; tags: string[] | null; dueDate: string | null; projectId: string | null; categoryId: string | null; completedAt: string | null; createdAt: string }
+interface ApiTask { id: string; title: string; description: string | null; priority: Priority; status: Status; tags: string[] | null; dueDate: string | null; projectId: string | null; categoryId: string | null; completedAt: string | null; createdAt: string; updatedAt: string }
 interface ApiCategory { id: string; name: string; emoji: string; color: string; isActive: boolean }
 interface ApiTag { id: string; name: string; isActive: boolean }
 interface ApiProject { id: string; name: string; color: string; isActive: boolean }
@@ -74,7 +74,7 @@ interface ApiProfile { displayName: string; role: string; avatarColor: string; d
 
 // ── mappers: api → app ───────────────────────────────────────────
 function taskFromApi(r: ApiTask): Task {
-  return { id: r.id, title: r.title, description: r.description ?? undefined, priority: r.priority, status: r.status, tags: r.tags ?? [], createdAt: r.createdAt, dueDate: r.dueDate ?? undefined, projectId: r.projectId ?? undefined, categoryId: r.categoryId ?? undefined, completedAt: r.completedAt ?? undefined };
+  return { id: r.id, title: r.title, description: r.description ?? undefined, priority: r.priority, status: r.status, tags: r.tags ?? [], createdAt: r.createdAt, dueDate: r.dueDate ?? undefined, projectId: r.projectId ?? undefined, categoryId: r.categoryId ?? undefined, completedAt: r.completedAt ?? undefined, updatedAt: r.updatedAt || undefined };
 }
 function categoryFromApi(r: ApiCategory): Category {
   return { id: r.id, name: r.name, emoji: r.emoji, color: r.color, isActive: r.isActive };

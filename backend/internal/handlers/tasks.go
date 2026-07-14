@@ -22,6 +22,7 @@ type taskDTO struct {
 	CategoryID  *string  `json:"categoryId"`
 	CompletedAt *string  `json:"completedAt"`
 	CreatedAt   string   `json:"createdAt"`
+	UpdatedAt   string   `json:"updatedAt"` // อ่านอย่างเดียว (trigger เซ็ตให้) — ไม่รับจาก client
 }
 
 type taskInput struct {
@@ -53,7 +54,7 @@ func (in *taskInput) normalize() {
 func (h *Handler) ListTasks(c *fiber.Ctx) error {
 	uid := middleware.UserID(c)
 	rows, err := h.DB.Query(c.Context(), `
-		select id, title, description, priority, status, tags, due_date, project_id, category_id, completed_at, created_at
+		select id, title, description, priority, status, tags, due_date, project_id, category_id, completed_at, created_at, updated_at
 		from public.tasks
 		where user_id = $1 and deleted_at is null
 		order by sort_order, created_at`, uid)
@@ -69,13 +70,15 @@ func (h *Handler) ListTasks(c *fiber.Ctx) error {
 			due       *time.Time
 			completed *time.Time
 			created   time.Time
+			updated   time.Time
 		)
-		if err := rows.Scan(&t.ID, &t.Title, &t.Description, &t.Priority, &t.Status, &t.Tags, &due, &t.ProjectID, &t.CategoryID, &completed, &created); err != nil {
+		if err := rows.Scan(&t.ID, &t.Title, &t.Description, &t.Priority, &t.Status, &t.Tags, &due, &t.ProjectID, &t.CategoryID, &completed, &created, &updated); err != nil {
 			return err
 		}
 		t.DueDate = dateStrPtr(due)
 		t.CompletedAt = dateStrPtr(completed)
 		t.CreatedAt = dateStr(created)
+		t.UpdatedAt = updated.Format(time.RFC3339) // ISO เต็ม (มี timezone) ให้ frontend format เป็นเวลาท้องถิ่นเอง
 		out = append(out, t)
 	}
 	return c.JSON(fiber.Map{"tasks": out})

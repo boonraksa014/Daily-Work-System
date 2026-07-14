@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
-  LayoutDashboard, Kanban, BookOpen, BarChart3,
+  LayoutDashboard, Kanban, BookOpen, BarChart3, Layers,
   Sun, Moon, Menu, X, Settings, ChevronDown, User, LogOut
 } from "lucide-react";
 import { useData } from "@/lib/store";
@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { href: "/kanban",    label: "Kanban",        emoji: "📋", icon: <Kanban size={17} />,           gradient: "linear-gradient(135deg, #0369a1, #38bdf8)" },
   { href: "/log",       label: "บันทึกรายวัน", emoji: "✍️", icon: <BookOpen size={17} />,         gradient: "linear-gradient(135deg, #059669, #34d399)" },
   { href: "/reports",   label: "รายงาน",        emoji: "📊", icon: <BarChart3 size={17} />,        gradient: "linear-gradient(135deg, #d97706, #fbbf24)" },
+  { href: "/project-tasks", label: "งานตามโปรเจกต์", emoji: "🗂️", icon: <Layers size={17} />,      gradient: "linear-gradient(135deg, #7c3aed, #ec4899)" },
 ];
 
 // ── เมนูย่อยใต้ "ตั้งค่า" ── (ADMIN_SETTINGS_ITEM = เมนูที่เห็นเฉพาะแอดมิน)
