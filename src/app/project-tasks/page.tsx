@@ -16,6 +16,7 @@ const TASK_STATUS: Record<Status, StatusCfg> = {
   done:       { label: "เสร็จสิ้น",       bg: "#d1fae5", color: "#065f46", emoji: "✅" },
 };
 const LOG_OPEN: StatusCfg = { label: "ค้าง", bg: "#fef3c7", color: "#92400e", emoji: "🕒" };
+const CANCELLED: StatusCfg = { label: "ยกเลิก", bg: "#fff1f2", color: "#e11d48", emoji: "⛔" };
 
 // รวมงาน Kanban + บันทึกรายวัน เป็นแถวเดียวกัน (log ที่ผูก task = รวมชั่วโมงเข้า task ไม่แสดงซ้ำ)
 interface Row {
@@ -25,6 +26,7 @@ interface Row {
   title: string;
   description: string;
   status: StatusCfg;
+  cancelReason?: string; // เหตุผลถ้ายกเลิก
   hours: number;   // เวลาที่ใช้ (ชม.)
   created: string; // YYYY-MM-DD
   updated: string; // ISO (task) หรือ YYYY-MM-DD (log)
@@ -58,7 +60,8 @@ export default function ProjectTasksPage() {
     }
     const taskRows: Row[] = tasks.map(t => ({
       id: t.id, kind: "task", projectId: t.projectId, title: t.title, description: t.description ?? "",
-      status: TASK_STATUS[t.status], hours: hoursByTask.get(t.id) ?? 0,
+      status: t.cancelledAt ? CANCELLED : TASK_STATUS[t.status], cancelReason: t.cancelReason,
+      hours: hoursByTask.get(t.id) ?? 0,
       created: t.createdAt, updated: t.updatedAt ?? t.createdAt,
     }));
     // log ที่ไม่ผูก task (หรือ task ถูกลบไปแล้ว) → แถวของตัวเอง
@@ -66,7 +69,8 @@ export default function ProjectTasksPage() {
       .filter(e => !(e.taskId && taskIds.has(e.taskId)))
       .map(e => ({
         id: e.id, kind: "log", projectId: e.projectId, title: e.title, description: e.note ?? "",
-        status: e.done ? TASK_STATUS.done : LOG_OPEN, hours: e.hours,
+        status: e.cancelledAt ? CANCELLED : e.done ? TASK_STATUS.done : LOG_OPEN, cancelReason: e.cancelReason,
+        hours: e.hours,
         created: e.date, updated: e.date,
       }));
     return [...taskRows, ...logRows];
@@ -203,9 +207,17 @@ export default function ProjectTasksPage() {
                             : <span>-</span>}
                         </td>
                         <td className="py-3 pr-3" style={{ borderBottom: "1px solid var(--wt-soft2)", whiteSpace: "nowrap" }}>
-                          <span className="inline-block px-2.5 py-1 rounded-full" style={{ background: r.status.bg, color: r.status.color, fontSize: "0.72rem", fontWeight: 800 }}>
-                            {r.status.emoji} {r.status.label}
-                          </span>
+                          {r.status === CANCELLED ? (
+                            <Tooltip label={r.cancelReason ? `เหตุผล: ${r.cancelReason}` : "ไม่ได้ระบุเหตุผล"}>
+                              <span className="inline-block px-2.5 py-1 rounded-full" style={{ background: r.status.bg, color: r.status.color, fontSize: "0.72rem", fontWeight: 800, cursor: "default" }}>
+                                {r.status.emoji} {r.status.label}
+                              </span>
+                            </Tooltip>
+                          ) : (
+                            <span className="inline-block px-2.5 py-1 rounded-full" style={{ background: r.status.bg, color: r.status.color, fontSize: "0.72rem", fontWeight: 800 }}>
+                              {r.status.emoji} {r.status.label}
+                            </span>
+                          )}
                         </td>
                         <td className="py-3 pr-3" style={{ fontSize: "0.8rem", fontWeight: 800, color: r.hours > 0 ? "#7c3aed" : "var(--wt-muted)", whiteSpace: "nowrap", borderBottom: "1px solid var(--wt-soft2)" }}>{r.hours > 0 ? `${r.hours} ชม.` : "-"}</td>
                         <td className="py-3 pr-3" style={{ fontSize: "0.78rem", color: "var(--wt-muted)", whiteSpace: "nowrap", borderBottom: "1px solid var(--wt-soft2)" }}>{fmtDate(r.created)}</td>

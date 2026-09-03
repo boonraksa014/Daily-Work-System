@@ -553,6 +553,7 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags 
   const [dragOverCol, setDragOverCol] = useState<Status | null>(null);
   const [menu, setMenu] = useState<{ task: Task; x: number; y: number } | null>(null);
   const [cancelling, setCancelling] = useState<Task | null>(null);
+  const [showCancelled, setShowCancelled] = useState(false);
 
   // Close the task menu on outside click, scroll, resize, or Escape.
   useEffect(() => {
@@ -634,7 +635,10 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags 
     return toDateStr(d);
   })();
   const inColumn = (t: Task, colId: Status) =>
-    t.status === colId && (colId !== "done" || (t.completedAt ?? t.createdAt) >= doneCutoff);
+    t.status === colId
+    && (colId !== "done" || (t.completedAt ?? t.createdAt) >= doneCutoff)
+    && (showCancelled || !t.cancelledAt); // ซ่อนงานที่ยกเลิก เว้นแต่กดแสดง
+  const cancelledCount = tasks.filter(t => t.cancelledAt).length;
 
   const MENU_WIDTH = 176;
   const menuLeft = menu ? Math.max(8, Math.min(menu.x - MENU_WIDTH, window.innerWidth - MENU_WIDTH - 8)) : 0;
@@ -679,6 +683,16 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags 
             <button onClick={() => { setQuery(""); setPriFilter([]); setTagFilter([]); }}
               className="rounded-xl transition-colors" style={{ padding: "0.4rem 0.7rem", fontSize: "0.76rem", fontWeight: 700, color: "#7c3aed", background: "var(--wt-soft2)" }}>
               ล้างตัวกรอง
+            </button>
+          )}
+          {cancelledCount > 0 && (
+            <button onClick={() => setShowCancelled(s => !s)} aria-pressed={showCancelled}
+              className="flex items-center gap-1.5 rounded-xl transition-colors ml-auto"
+              style={{ padding: "0.4rem 0.7rem", fontSize: "0.76rem", fontWeight: 700,
+                background: showCancelled ? "#fff1f2" : "var(--wt-card)",
+                color: showCancelled ? "#e11d48" : "var(--wt-muted)",
+                border: `1px solid ${showCancelled ? "#fecdd3" : "var(--wt-border)"}` }}>
+              <Ban size={13} /> {showCancelled ? "ซ่อนงานที่ยกเลิก" : `งานที่ยกเลิก (${cancelledCount})`}
             </button>
           )}
         </div>
