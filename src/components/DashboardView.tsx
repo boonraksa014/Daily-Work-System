@@ -22,8 +22,10 @@ interface DashboardViewProps {
 export function DashboardView({ tasks, logEntries, onNavigate }: DashboardViewProps) {
   const today = todayStr();
   const todayLogs = logEntries.filter(e => e.date === today);
-  const todayHours = todayLogs.reduce((s, e) => s + e.hours, 0);
-  const todayDone = todayLogs.filter(e => e.done).length;
+  // งานที่ "สำเร็จ" วันนี้ (ติ๊กเสร็จ + ไม่ถูกยกเลิก) — ใช้คิดชั่วโมงที่ทำเสร็จ
+  const doneToday = todayLogs.filter(e => e.done && !e.cancelledAt);
+  const todayHours = doneToday.reduce((s, e) => s + e.hours, 0);
+  const todayDone = doneToday.length;
   const inProgress = tasks.filter(t => t.status === "inprogress").length;
   const doneTasks = tasks.filter(t => t.status === "done").length;
   const greet = greeting();
@@ -31,7 +33,7 @@ export function DashboardView({ tasks, logEntries, onNavigate }: DashboardViewPr
   const QUICK_STATS = [
     { emoji: "📋", label: "งานวันนี้",      value: todayLogs.length, unit: "รายการ", accent: "#7c3aed", chip: "#ede9fe", nav: "log" as View },
     { emoji: "✅", label: "เสร็จแล้ววันนี้", value: todayDone,         unit: "รายการ", accent: "#059669", chip: "#d1fae5", nav: "log" as View },
-    { emoji: "⏱️", label: "ชม. วันนี้",    value: todayHours,        unit: "ชม.",   accent: "#d97706", chip: "#fef3c7", nav: "log" as View },
+    { emoji: "⏱️", label: "ชม. ที่ทำเสร็จ", value: todayHours,        unit: "ชม.",   accent: "#d97706", chip: "#fef3c7", nav: "log" as View },
     { emoji: "⚡", label: "กำลังดำเนินการ", value: inProgress,        unit: "งาน",   accent: "#0369a1", chip: "#e0f2fe", nav: "kanban" as View },
   ];
 
@@ -176,7 +178,7 @@ export function DashboardView({ tasks, logEntries, onNavigate }: DashboardViewPr
           </div>
           {todayHours > 0 && (
             <div className="mt-3 pt-3 flex items-center justify-between" style={{ borderTop: "2px solid var(--wt-soft2)" }}>
-              <span style={{ fontSize: "0.78rem", color: "var(--wt-muted)", fontWeight: 600 }}>รวมวันนี้</span>
+              <span style={{ fontSize: "0.78rem", color: "var(--wt-muted)", fontWeight: 600 }}>รวมที่ทำเสร็จวันนี้</span>
               <span style={{ fontSize: "0.9rem", fontWeight: 900, color: "#7c3aed" }}>{todayHours} ชั่วโมง ⏱️</span>
             </div>
           )}
