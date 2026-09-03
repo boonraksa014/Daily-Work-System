@@ -145,6 +145,7 @@ export function Reports({ logEntries, tasks, categories, projects }: ReportsProp
       const fill = (argb: string) => ({ type: "pattern" as const, pattern: "solid" as const, fgColor: { argb } });
       // คืนสไตล์ของช่อง "สถานะ" ตามค่า
       const statusStyle = (v: string): { bg: string; fg: string } | null => {
+        if (/ยกเลิก/.test(v)) return { bg: "FFFFE4E6", fg: "FFB91C1C" };
         if (/เสร็จ/.test(v)) return { bg: "FFD1FAE5", fg: "FF065F46" };
         if (/กำลัง/.test(v)) return { bg: "FFFFEDD5", fg: "FF9A3412" };
         if (/(ค้าง|รอ)/.test(v)) return { bg: "FFFEF3C7", fg: "FF92400E" };
@@ -197,7 +198,7 @@ export function Reports({ logEntries, tasks, categories, projects }: ReportsProp
         { header: "บันทึก", key: "note", width: 38 },
       ], [...rangeLogs].sort((a, b) => b.date.localeCompare(a.date)).map(e => ({
         date: e.date, title: e.title, category: e.category, project: projName(e.projectId),
-        hours: e.hours, status: e.done ? "เสร็จ" : "ค้าง",
+        hours: e.hours, status: e.cancelledAt ? "ยกเลิก" : e.done ? "เสร็จ" : "ค้าง",
         linked: tasks.find(t => t.id === e.taskId)?.title ?? "", note: e.note ?? "",
       })));
 
@@ -212,7 +213,7 @@ export function Reports({ logEntries, tasks, categories, projects }: ReportsProp
         { header: "วันที่เสร็จ", key: "completed", width: 12 },
         { header: "สร้างเมื่อ", key: "created", width: 12 },
       ], tasks.map(t => ({
-        title: t.title, status: statusLabel[t.status] ?? t.status, priority: priLabel[t.priority] ?? t.priority,
+        title: t.title, status: t.cancelledAt ? "ยกเลิก" : (statusLabel[t.status] ?? t.status), priority: priLabel[t.priority] ?? t.priority,
         project: projName(t.projectId), category: catNameById(t.categoryId), tags: t.tags.join(", "),
         due: t.dueDate ?? "", completed: t.completedAt ?? "", created: t.createdAt,
       })));
@@ -509,7 +510,9 @@ export function Reports({ logEntries, tasks, categories, projects }: ReportsProp
                     </td>
                     <td className="py-3 pr-3" style={{ fontSize: "0.82rem", fontWeight: 800, color: "#7c3aed", textAlign: "right", whiteSpace: "nowrap", borderBottom: "1px solid var(--wt-soft2)" }}>{e.hours}</td>
                     <td className="py-3" style={{ textAlign: "center", borderBottom: "1px solid var(--wt-soft2)" }}>
-                      {e.done
+                      {e.cancelledAt
+                        ? <span className="inline-block px-2.5 py-1 rounded-full" style={{ background: "#fff1f2", color: "#e11d48", fontSize: "0.7rem", fontWeight: 700, whiteSpace: "nowrap" }} title={e.cancelReason ? `เหตุผล: ${e.cancelReason}` : "ยกเลิกแล้ว"}>⛔ ยกเลิก</span>
+                        : e.done
                         ? <span className="inline-block px-2.5 py-1 rounded-full" style={{ background: "#d1fae5", color: "#065f46", fontSize: "0.7rem", fontWeight: 700, whiteSpace: "nowrap" }}>✅ เสร็จ</span>
                         : <span className="inline-block px-2.5 py-1 rounded-full" style={{ background: "#fef3c7", color: "#92400e", fontSize: "0.7rem", fontWeight: 700, whiteSpace: "nowrap" }}>⏳ รอ</span>}
                     </td>
