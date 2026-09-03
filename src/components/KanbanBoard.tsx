@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Plus, MoreHorizontal, Clock, Trash2, X, Sparkles, Pencil, Search, ChevronDown, Check } from "lucide-react";
+import { Plus, MoreHorizontal, Clock, Trash2, X, Sparkles, Pencil, Search, ChevronDown, Check, Ban, RotateCcw } from "lucide-react";
 import { makeId } from "../lib/id";
 import { DatePicker } from "./DatePicker";
 import { SingleSelect } from "./SingleSelect";
+import { Tooltip } from "./Tooltip";
+import { CancelDialog } from "./CancelDialog";
 import { todayStr, toDateStr } from "../lib/date";
 import type { LogEntry } from "./DailyLog";
 import type { Project, Category } from "../types";
@@ -25,6 +27,8 @@ export interface Task {
   categoryId?: string; // หมวดหมู่ของงานนี้ (ถ้ามี)
   completedAt?: string; // วันที่ย้ายเข้า "เสร็จสิ้น" (ใช้ซ่อนงานที่เสร็จเกิน 5 วัน)
   updatedAt?: string;   // เวลาที่แก้ล่าสุด (ISO) — server เซ็ตให้ อ่านอย่างเดียว
+  cancelledAt?: string; // วันที่ยกเลิกงาน (null = ไม่ได้ยกเลิก)
+  cancelReason?: string; // หมายเหตุ/เหตุผลในการยกเลิก
 }
 
 // คอลัมน์ "เสร็จสิ้น" แสดงเฉพาะงานที่เสร็จภายในกี่วันล่าสุด (นับจากวันที่เสร็จ)
@@ -425,7 +429,7 @@ function TaskCard({ task, loggedHours, project, category, onOpenMenu, onDragStar
         background: "var(--wt-card)",
         border: "1px solid var(--wt-border)",
         boxShadow: "0 1px 3px rgba(76,29,149,0.07)",
-        opacity: isDragging ? 0.4 : 1,
+        opacity: isDragging ? 0.4 : (task.cancelledAt ? 0.6 : 1),
         transition: "transform 0.18s cubic-bezier(0.22,1,0.36,1), box-shadow 0.18s ease",
       }}
       onMouseEnter={e => {
@@ -440,7 +444,7 @@ function TaskCard({ task, loggedHours, project, category, onOpenMenu, onDragStar
       <div className="p-3.5">
         <div className="flex items-start gap-2.5">
           <span className="mt-1.5 w-2.5 h-2.5 rounded-full shrink-0" style={{ background: pri.dot }} title={`ความสำคัญ: ${pri.label}`} />
-          <p className="flex-1 leading-snug" style={{ fontSize: "0.88rem", fontWeight: 700, color: "var(--wt-text)" }}>{task.title}</p>
+          <p className="flex-1 leading-snug" style={{ fontSize: "0.88rem", fontWeight: 700, color: task.cancelledAt ? "var(--wt-muted)" : "var(--wt-text)", textDecoration: task.cancelledAt ? "line-through" : "none" }}>{task.title}</p>
           <button
             onClick={e => { e.stopPropagation(); onOpenMenu(task, e.currentTarget.getBoundingClientRect()); }}
             aria-label="ตัวเลือกงาน" aria-haspopup="menu"
@@ -451,6 +455,16 @@ function TaskCard({ task, loggedHours, project, category, onOpenMenu, onDragStar
             <MoreHorizontal size={16} />
           </button>
         </div>
+
+        {task.cancelledAt && (
+          <div className="mt-1.5 ml-5">
+            <Tooltip label={task.cancelReason ? `เหตุผล: ${task.cancelReason}` : "ไม่ได้ระบุเหตุผล"}>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full" style={{ background: "#fff1f2", color: "#e11d48", fontSize: "0.68rem", fontWeight: 800, cursor: "default" }}>
+                <Ban size={10} /> ยกเลิกแล้ว
+              </span>
+            </Tooltip>
+          </div>
+        )}
 
         {task.description && (
           <p className="mt-1.5 ml-5 line-clamp-2" style={{ fontSize: "0.78rem", color: "var(--wt-muted)" }}>{task.description}</p>
@@ -538,6 +552,7 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags 
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<Status | null>(null);
   const [menu, setMenu] = useState<{ task: Task; x: number; y: number } | null>(null);
+  const [cancelling, setCancelling] = useState<Task | null>(null);
 
   // Close the task menu on outside click, scroll, resize, or Escape.
   useEffect(() => {
@@ -570,6 +585,12 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags 
   function deleteTask(id: string) {
     if (onDeleteTask) onDeleteTask(id);
     else onTasksChange(tasks.filter(t => t.id !== id));
+  }
+  function cancelTask(id: string, note: string) {
+    onTasksChange(tasks.map(t => t.id === id ? { ...t, cancelledAt: todayStr(), cancelReason: note || undefined } : t));
+  }
+  function restoreTask(id: string) {
+    onTasksChange(tasks.map(t => t.id === id ? { ...t, cancelledAt: undefined, cancelReason: undefined } : t));
   }
   function moveTask(id: string, status: Status) {
     const current = tasks.find(t => t.id === id);
@@ -773,6 +794,23 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags 
             );
           })}
           <div style={{ borderTop: "1px solid var(--wt-border)", margin: "4px 0" }} />
+          {menu.task.cancelledAt ? (
+            <button role="menuitem" onClick={() => { restoreTask(menu.task.id); setMenu(null); }}
+              className="flex items-center gap-2 w-full px-4 py-2.5 text-left transition-colors"
+              style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--wt-text)" }}
+              onMouseEnter={e => (e.currentTarget.style.background = "var(--wt-soft2)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+              <RotateCcw size={13} /> คืนสถานะงาน
+            </button>
+          ) : (
+            <button role="menuitem" onClick={() => { setCancelling(menu.task); setMenu(null); }}
+              className="flex items-center gap-2 w-full px-4 py-2.5 text-left transition-colors"
+              style={{ fontSize: "0.82rem", fontWeight: 600, color: "#d97706" }}
+              onMouseEnter={e => (e.currentTarget.style.background = "rgba(217,119,6,0.1)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+              <Ban size={13} /> ยกเลิกงาน
+            </button>
+          )}
           <button role="menuitem" onClick={() => { deleteTask(menu.task.id); setMenu(null); }}
             className="flex items-center gap-2 w-full px-4 py-2.5 text-left transition-colors"
             style={{ fontSize: "0.82rem", fontWeight: 600, color: "#f43f5e" }}
@@ -785,6 +823,8 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags 
 
       {/* Backdrop to catch outside clicks while the menu is open. */}
       {menu && <div className="fixed inset-0" style={{ zIndex: 55 }} onClick={() => setMenu(null)} />}
+
+      {cancelling && <CancelDialog title={cancelling.title} onConfirm={note => { cancelTask(cancelling.id, note); setCancelling(null); }} onClose={() => setCancelling(null)} />}
 
       {addingTo && <TaskModal status={addingTo} availableTags={availableTags} availableProjects={availableProjects} availableCategories={availableCategories} onSubmit={addTask} onClose={() => setAddingTo(null)} />}
       {editing && <TaskModal status={editing.status} initial={editing} availableTags={availableTags} availableProjects={availableProjects} availableCategories={availableCategories} taskLogs={logEntries.filter(e => e.taskId === editing.id)} onUpdateLogHours={onUpdateLogHours} onLogTime={onLogTime} onSubmit={data => updateTask(editing.id, data)} onClose={() => setEditing(null)} />}

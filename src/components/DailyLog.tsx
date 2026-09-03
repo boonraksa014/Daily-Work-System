@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Trash2, Clock, ChevronLeft, ChevronRight, ChevronDown, CheckCircle2, Circle, Pencil, Search, X } from "lucide-react";
+import { Plus, Trash2, Clock, ChevronLeft, ChevronRight, ChevronDown, CheckCircle2, Circle, Pencil, Search, X, Ban, RotateCcw } from "lucide-react";
 import { makeId } from "../lib/id";
+import { Tooltip } from "./Tooltip";
+import { CancelDialog } from "./CancelDialog";
 import type { Category, Project } from "../types";
 import type { Task } from "./KanbanBoard";
 import { DatePicker } from "./DatePicker";
@@ -19,6 +21,8 @@ export interface LogEntry {
   taskId?: string; // งาน Kanban ที่ผูกไว้ (ถ้ามี)
   projectId?: string; // โปรเจกต์ที่เกี่ยวข้อง (ถ้ามี)
   done: boolean;
+  cancelledAt?: string; // วันที่ยกเลิก (null = ไม่ได้ยกเลิก)
+  cancelReason?: string; // หมายเหตุการยกเลิก
 }
 
 /** หา category ตามชื่อ; ถ้าถูกลบไปแล้วคืนค่า fallback กลางๆ */
@@ -201,19 +205,23 @@ interface EntryCardProps {
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (id: string) => void;
+  onCancel: (id: string) => void;
+  onRestore: (id: string) => void;
 }
 
-function EntryCard({ entry, categories, tasks, projects, onToggle, onDelete, onEdit }: EntryCardProps) {
+function EntryCard({ entry, categories, tasks, projects, onToggle, onDelete, onEdit, onCancel, onRestore }: EntryCardProps) {
   const cat = findCat(categories, entry.category);
   const linkedTask = entry.taskId ? tasks.find(t => t.id === entry.taskId) : undefined;
   const linkedProject = entry.projectId ? projects.find(p => p.id === entry.projectId) : undefined;
+  const cancelled = !!entry.cancelledAt;
+  const dimmed = cancelled || entry.done;
 
   return (
     <div
       className="group flex gap-3 rounded-2xl p-4 transition-all bg-white"
       style={{
-        border: `2px solid ${entry.done ? "#bbf7d0" : "var(--wt-border)"}`,
-        opacity: entry.done ? 0.8 : 1,
+        border: `2px solid ${cancelled ? "#fecdd3" : entry.done ? "#bbf7d0" : "var(--wt-border)"}`,
+        opacity: cancelled ? 0.65 : entry.done ? 0.8 : 1,
         boxShadow: "0 2px 8px rgba(124,58,237,0.06)",
       }}
       onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 6px 20px rgba(124,58,237,0.12)")}
@@ -228,13 +236,20 @@ function EntryCard({ entry, categories, tasks, projects, onToggle, onDelete, onE
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <p className={entry.done ? "line-through" : ""} style={{ fontSize: "0.9rem", fontWeight: 700, color: entry.done ? "var(--wt-muted)" : "var(--wt-text)" }}>
+        <p className={dimmed ? "line-through" : ""} style={{ fontSize: "0.9rem", fontWeight: 700, color: dimmed ? "var(--wt-muted)" : "var(--wt-text)" }}>
           {entry.title}
         </p>
         {entry.note && (
           <p className="mt-0.5" style={{ fontSize: "0.78rem", color: "var(--wt-muted)" }}>{entry.note}</p>
         )}
-        <div className="flex items-center gap-2 mt-2">
+        <div className="flex flex-wrap items-center gap-2 mt-2">
+          {cancelled && (
+            <Tooltip label={entry.cancelReason ? `เหตุผล: ${entry.cancelReason}` : "ไม่ได้ระบุเหตุผล"}>
+              <span className="flex items-center gap-1 px-2.5 py-1 rounded-full" style={{ background: "#fff1f2", color: "#e11d48", fontSize: "0.72rem", fontWeight: 800, cursor: "default" }}>
+                <Ban size={11} /> ยกเลิกแล้ว
+              </span>
+            </Tooltip>
+          )}
           <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: cat.color + "22", color: "var(--wt-text)", fontSize: "0.72rem", fontWeight: 700 }}>
             {cat.emoji} {entry.category}
           </span>
@@ -263,6 +278,21 @@ function EntryCard({ entry, categories, tasks, projects, onToggle, onDelete, onE
           onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
           <Pencil size={14} />
         </button>
+        {cancelled ? (
+          <button onClick={() => onRestore(entry.id)} aria-label="คืนสถานะรายการ" title="คืนสถานะ"
+            className="p-2 rounded-xl transition-colors" style={{ color: "var(--wt-muted)" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "var(--wt-soft2)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+            <RotateCcw size={14} />
+          </button>
+        ) : (
+          <button onClick={() => onCancel(entry.id)} aria-label="ยกเลิกงาน" title="ยกเลิกงาน"
+            className="p-2 rounded-xl transition-colors" style={{ color: "#d97706" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "rgba(217,119,6,0.1)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+            <Ban size={14} />
+          </button>
+        )}
         <button onClick={() => onDelete(entry.id)} aria-label="ลบรายการ"
           className="p-2 rounded-xl transition-colors" style={{ color: "#f43f5e" }}
           onMouseEnter={e => (e.currentTarget.style.background = "rgba(244,63,94,0.1)")}
@@ -295,6 +325,7 @@ export function DailyLog({ entries, categories, tasks, projects, onEntriesChange
   const [editingId, setEditingId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [headerOpen, setHeaderOpen] = useState(false); // ย่อ/ขยายส่วนสถิติของ header (เริ่มต้น = ยุบ)
+  const [cancelling, setCancelling] = useState<LogEntry | null>(null);
 
   // ปิด popup เพิ่ม/แก้ไขด้วย Escape
   useEffect(() => {
@@ -339,11 +370,17 @@ export function DailyLog({ entries, categories, tasks, projects, onEntriesChange
     if (onDeleteEntry) onDeleteEntry(id);
     else onEntriesChange(entries.filter(e => e.id !== id));
   }
+  function cancelEntry(id: string, note: string) {
+    onEntriesChange(entries.map(e => e.id === id ? { ...e, cancelledAt: todayStr(), cancelReason: note || undefined } : e));
+  }
+  function restoreEntry(id: string) {
+    onEntriesChange(entries.map(e => e.id === id ? { ...e, cancelledAt: undefined, cancelReason: undefined } : e));
+  }
 
   const editingEntry = editingId ? entries.find(e => e.id === editingId) ?? null : null;
 
   function renderEntry(entry: LogEntry) {
-    return <EntryCard key={entry.id} entry={entry} categories={categories} tasks={tasks} projects={projects} onToggle={toggleEntry} onDelete={deleteEntry} onEdit={setEditingId} />;
+    return <EntryCard key={entry.id} entry={entry} categories={categories} tasks={tasks} projects={projects} onToggle={toggleEntry} onDelete={deleteEntry} onEdit={setEditingId} onCancel={id => setCancelling(entries.find(e => e.id === id) ?? null)} onRestore={restoreEntry} />;
   }
 
   return (
@@ -545,6 +582,13 @@ export function DailyLog({ entries, categories, tasks, projects, onEntriesChange
               onSubmit={data => updateEntry(editingEntry.id, data)} onCancel={() => setEditingId(null)} />
           </div>
         </div>
+      )}
+
+      {/* Cancel entry popup */}
+      {cancelling && (
+        <CancelDialog title={cancelling.title}
+          onConfirm={note => { cancelEntry(cancelling.id, note); setCancelling(null); }}
+          onClose={() => setCancelling(null)} />
       )}
     </div>
   );

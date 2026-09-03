@@ -11,31 +11,35 @@ import (
 )
 
 type taskDTO struct {
-	ID          string   `json:"id"`
-	Title       string   `json:"title"`
-	Description *string  `json:"description"`
-	Priority    string   `json:"priority"`
-	Status      string   `json:"status"`
-	Tags        []string `json:"tags"`
-	DueDate     *string  `json:"dueDate"`
-	ProjectID   *string  `json:"projectId"`
-	CategoryID  *string  `json:"categoryId"`
-	CompletedAt *string  `json:"completedAt"`
-	CreatedAt   string   `json:"createdAt"`
-	UpdatedAt   string   `json:"updatedAt"` // อ่านอย่างเดียว (trigger เซ็ตให้) — ไม่รับจาก client
+	ID           string   `json:"id"`
+	Title        string   `json:"title"`
+	Description  *string  `json:"description"`
+	Priority     string   `json:"priority"`
+	Status       string   `json:"status"`
+	Tags         []string `json:"tags"`
+	DueDate      *string  `json:"dueDate"`
+	ProjectID    *string  `json:"projectId"`
+	CategoryID   *string  `json:"categoryId"`
+	CompletedAt  *string  `json:"completedAt"`
+	CancelledAt  *string  `json:"cancelledAt"`
+	CancelReason *string  `json:"cancelReason"`
+	CreatedAt    string   `json:"createdAt"`
+	UpdatedAt    string   `json:"updatedAt"` // อ่านอย่างเดียว (trigger เซ็ตให้) — ไม่รับจาก client
 }
 
 type taskInput struct {
-	ID          string   `json:"id"`
-	Title       string   `json:"title"`
-	Description *string  `json:"description"`
-	Priority    string   `json:"priority"`
-	Status      string   `json:"status"`
-	Tags        []string `json:"tags"`
-	DueDate     *string  `json:"dueDate"`
-	ProjectID   *string  `json:"projectId"`
-	CategoryID  *string  `json:"categoryId"`
-	CompletedAt *string  `json:"completedAt"`
+	ID           string   `json:"id"`
+	Title        string   `json:"title"`
+	Description  *string  `json:"description"`
+	Priority     string   `json:"priority"`
+	Status       string   `json:"status"`
+	Tags         []string `json:"tags"`
+	DueDate      *string  `json:"dueDate"`
+	ProjectID    *string  `json:"projectId"`
+	CategoryID   *string  `json:"categoryId"`
+	CompletedAt  *string  `json:"completedAt"`
+	CancelledAt  *string  `json:"cancelledAt"`
+	CancelReason *string  `json:"cancelReason"`
 }
 
 func (in *taskInput) normalize() {
@@ -54,7 +58,7 @@ func (in *taskInput) normalize() {
 func (h *Handler) ListTasks(c *fiber.Ctx) error {
 	uid := middleware.UserID(c)
 	rows, err := h.DB.Query(c.Context(), `
-		select id, title, description, priority, status, tags, due_date, project_id, category_id, completed_at, created_at, updated_at
+		select id, title, description, priority, status, tags, due_date, project_id, category_id, completed_at, cancelled_at, cancel_reason, created_at, updated_at
 		from public.tasks
 		where user_id = $1 and deleted_at is null
 		order by sort_order, created_at`, uid)
@@ -69,14 +73,16 @@ func (h *Handler) ListTasks(c *fiber.Ctx) error {
 			t         taskDTO
 			due       *time.Time
 			completed *time.Time
+			cancelled *time.Time
 			created   time.Time
 			updated   time.Time
 		)
-		if err := rows.Scan(&t.ID, &t.Title, &t.Description, &t.Priority, &t.Status, &t.Tags, &due, &t.ProjectID, &t.CategoryID, &completed, &created, &updated); err != nil {
+		if err := rows.Scan(&t.ID, &t.Title, &t.Description, &t.Priority, &t.Status, &t.Tags, &due, &t.ProjectID, &t.CategoryID, &completed, &cancelled, &t.CancelReason, &created, &updated); err != nil {
 			return err
 		}
 		t.DueDate = dateStrPtr(due)
 		t.CompletedAt = dateStrPtr(completed)
+		t.CancelledAt = dateStrPtr(cancelled)
 		t.CreatedAt = dateStr(created)
 		t.UpdatedAt = updated.Format(time.RFC3339) // ISO เต็ม (มี timezone) ให้ frontend format เป็นเวลาท้องถิ่นเอง
 		out = append(out, t)
@@ -101,23 +107,26 @@ func (h *Handler) CreateTask(c *fiber.Ctx) error {
 		var (
 			due       *time.Time
 			completed *time.Time
+			cancelled *time.Time
 			created   time.Time
 		)
 		row := tx.QueryRow(c.Context(), `
-			insert into public.tasks (id, user_id, title, description, priority, status, tags, due_date, project_id, category_id, completed_at)
-			values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+			insert into public.tasks (id, user_id, title, description, priority, status, tags, due_date, project_id, category_id, completed_at, cancelled_at, cancel_reason)
+			values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
 			on conflict (id) do update set
 				title=excluded.title, description=excluded.description, priority=excluded.priority,
 				status=excluded.status, tags=excluded.tags, due_date=excluded.due_date,
-				project_id=excluded.project_id, category_id=excluded.category_id, completed_at=excluded.completed_at
+				project_id=excluded.project_id, category_id=excluded.category_id, completed_at=excluded.completed_at,
+				cancelled_at=excluded.cancelled_at, cancel_reason=excluded.cancel_reason
 			where public.tasks.user_id = excluded.user_id
-			returning id, title, description, priority, status, tags, due_date, project_id, category_id, completed_at, created_at`,
-			ensureID(in.ID), uid, in.Title, in.Description, in.Priority, in.Status, in.Tags, in.DueDate, in.ProjectID, in.CategoryID, in.CompletedAt)
-		if err := row.Scan(&dto.ID, &dto.Title, &dto.Description, &dto.Priority, &dto.Status, &dto.Tags, &due, &dto.ProjectID, &dto.CategoryID, &completed, &created); err != nil {
+			returning id, title, description, priority, status, tags, due_date, project_id, category_id, completed_at, cancelled_at, cancel_reason, created_at`,
+			ensureID(in.ID), uid, in.Title, in.Description, in.Priority, in.Status, in.Tags, in.DueDate, in.ProjectID, in.CategoryID, in.CompletedAt, in.CancelledAt, in.CancelReason)
+		if err := row.Scan(&dto.ID, &dto.Title, &dto.Description, &dto.Priority, &dto.Status, &dto.Tags, &due, &dto.ProjectID, &dto.CategoryID, &completed, &cancelled, &dto.CancelReason, &created); err != nil {
 			return err
 		}
 		dto.DueDate = dateStrPtr(due)
 		dto.CompletedAt = dateStrPtr(completed)
+		dto.CancelledAt = dateStrPtr(cancelled)
 		dto.CreatedAt = dateStr(created)
 		return nil
 	})
@@ -149,15 +158,16 @@ func (h *Handler) UpdateTask(c *fiber.Ctx) error {
 		var (
 			due       *time.Time
 			completed *time.Time
+			cancelled *time.Time
 			created   time.Time
 		)
 		row := tx.QueryRow(c.Context(), `
 			update public.tasks
-			set title=$1, description=$2, priority=$3, status=$4, tags=$5, due_date=$6, project_id=$7, category_id=$8, completed_at=$9
-			where id=$10 and user_id=$11 and deleted_at is null
-			returning id, title, description, priority, status, tags, due_date, project_id, category_id, completed_at, created_at`,
-			in.Title, in.Description, in.Priority, in.Status, in.Tags, in.DueDate, in.ProjectID, in.CategoryID, in.CompletedAt, id, uid)
-		if err := row.Scan(&dto.ID, &dto.Title, &dto.Description, &dto.Priority, &dto.Status, &dto.Tags, &due, &dto.ProjectID, &dto.CategoryID, &completed, &created); err != nil {
+			set title=$1, description=$2, priority=$3, status=$4, tags=$5, due_date=$6, project_id=$7, category_id=$8, completed_at=$9, cancelled_at=$10, cancel_reason=$11
+			where id=$12 and user_id=$13 and deleted_at is null
+			returning id, title, description, priority, status, tags, due_date, project_id, category_id, completed_at, cancelled_at, cancel_reason, created_at`,
+			in.Title, in.Description, in.Priority, in.Status, in.Tags, in.DueDate, in.ProjectID, in.CategoryID, in.CompletedAt, in.CancelledAt, in.CancelReason, id, uid)
+		if err := row.Scan(&dto.ID, &dto.Title, &dto.Description, &dto.Priority, &dto.Status, &dto.Tags, &due, &dto.ProjectID, &dto.CategoryID, &completed, &cancelled, &dto.CancelReason, &created); err != nil {
 			if err == pgx.ErrNoRows {
 				found = false
 				return nil
@@ -166,6 +176,7 @@ func (h *Handler) UpdateTask(c *fiber.Ctx) error {
 		}
 		dto.DueDate = dateStrPtr(due)
 		dto.CompletedAt = dateStrPtr(completed)
+		dto.CancelledAt = dateStrPtr(cancelled)
 		dto.CreatedAt = dateStr(created)
 		return nil
 	})
