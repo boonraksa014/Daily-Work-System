@@ -551,7 +551,7 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags 
   const [tagFilter, setTagFilter] = useState<string[]>([]);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<Status | null>(null);
-  const [menu, setMenu] = useState<{ task: Task; x: number; y: number } | null>(null);
+  const [menu, setMenu] = useState<{ task: Task; x: number; y: number; top: number } | null>(null);
   const [cancelling, setCancelling] = useState<Task | null>(null);
   const [showCancelled, setShowCancelled] = useState(false);
 
@@ -642,6 +642,9 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags 
 
   const MENU_WIDTH = 176;
   const menuLeft = menu ? Math.max(8, Math.min(menu.x - MENU_WIDTH, window.innerWidth - MENU_WIDTH - 8)) : 0;
+  // จำนวนเมนู: แก้ไข + ย้าย(สูงสุด 2) + ยกเลิก/คืน + ลบ → ประเมินความสูงเพื่อพลิกขึ้นถ้าล่างไม่พอ
+  const menuEstHeight = menu ? 44 * (3 + STATUSES.filter(s => s !== menu.task.status).length) + 16 : 0;
+  const menuUp = !!menu && menu.y + menuEstHeight > window.innerHeight && menu.top > menuEstHeight;
 
   return (
     <div className="flex flex-col h-full gap-3">
@@ -757,7 +760,7 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags 
                     <TaskCard key={task.id} task={task} loggedHours={hoursByTask.get(task.id) ?? 0}
                       project={task.projectId ? projectById.get(task.projectId) : undefined}
                       category={task.categoryId ? categoryById.get(task.categoryId) : undefined}
-                      onOpenMenu={(t, anchor) => setMenu({ task: t, x: anchor.right, y: anchor.bottom })}
+                      onOpenMenu={(t, anchor) => setMenu({ task: t, x: anchor.right, y: anchor.bottom, top: anchor.top })}
                       onDragStart={setDraggingId} onDragEnd={() => { setDraggingId(null); setDragOverCol(null); }}
                       isDragging={draggingId === task.id} />
                   ))}
@@ -784,7 +787,7 @@ export function KanbanBoard({ tasks, onTasksChange, onDeleteTask, availableTags 
       {menu && (
         <div role="menu" className="rounded-2xl py-1.5"
           style={{
-            position: "fixed", top: menu.y + 6, left: menuLeft, width: MENU_WIDTH, zIndex: 60,
+            position: "fixed", top: menuUp ? undefined : menu.y + 6, bottom: menuUp ? window.innerHeight - menu.top + 6 : undefined, left: menuLeft, width: MENU_WIDTH, zIndex: 60,
             background: "var(--wt-card)", border: "1px solid var(--wt-border)", boxShadow: "0 12px 32px rgba(76,29,149,0.22)",
           }}>
           <button role="menuitem" onClick={() => { setEditing(menu.task); setMenu(null); }}
